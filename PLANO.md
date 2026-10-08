@@ -150,8 +150,11 @@ O repositório `Danielolv14/Modelagem3D-AreaDeCasa` é **público**. Por isso:
 
 ---
 
-## Próximo passo
+## Andamento
 
-1. Colar a conversa do Gemini no chat.
-2. Mandar as fotos e o croqui.
-3. Responder o que faltar do checklist. O que não estiver no Gemini, eu pergunto.
+- [x] Plano e escolha da tecnologia
+- [x] Fotos recebidas e lidas: ver [[levantamento-fotos]] (`docs/levantamento-fotos.md`)
+- [x] Croqui: feito pelo Claude a partir das fotos (falta confirmar)
+- [ ] Rodar o [[prompt-gemini]] (`docs/prompt-gemini.md`) na conversa do Gemini e colar a resposta aqui
+- [ ] Tirar as dúvidas abertas do levantamento (porta, acesso à cozinha)
+- [ ] Fase 1: cômodo vazio
