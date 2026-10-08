@@ -1,7 +1,7 @@
 ---
 titulo: Plano — Simulação 3D da área de serviço
 criado: 2026-10-08
-status: planejamento
+status: versão 1 publicada
 tags:
   - projeto/modelagem3d
   - casa/area-de-servico
@@ -33,18 +33,15 @@ por link (GitHub Pages).
 
 ### Estrutura do projeto
 
+O usuário pediu algo mais simples, então a página virou **um arquivo só**:
+
 ```
-index.html            → página principal (Three.js via CDN, versão fixa)
-dados/medidas.js      → TODAS as medidas (cômodo + equipamentos) num só lugar, em cm
-js/comodo.js          → paredes, piso, teto, porta, janela, elementos fixos
-js/equipamentos.js    → caixas dos equipamentos + zonas de folga
-js/cenarios.js        → layouts alternativos (Atual / Opção A / Opção B…)
-js/verificacao.js     → checagem automática "cabe / não cabe"
-js/interface.js       → botões, câmeras, rótulos, modo de visão
+index.html   → página inteira (Three.js 0.160.0 via jsDelivr, versão fixa)
+               no topo do script: objeto M com TODAS as medidas, em cm
 ```
 
-Regra principal: **nenhuma medida fica espalhada pelo código**. Tudo sai de
-`dados/medidas.js`, então corrigir uma medida é editar uma linha.
+Regra principal: **nenhuma medida fica espalhada pelo código**. Tudo sai do objeto `M`
+no começo do script do `index.html`. Corrigir uma medida é editar uma linha.
 
 ### O que a página vai ter (pensado para a mãe)
 
@@ -154,7 +151,8 @@ O repositório `Danielolv14/Modelagem3D-AreaDeCasa` é **público**. Por isso:
 
 - [x] Plano e escolha da tecnologia
 - [x] Fotos recebidas e lidas: ver [[levantamento-fotos]] (`docs/levantamento-fotos.md`)
-- [x] Croqui: feito pelo Claude a partir das fotos (falta confirmar)
-- [ ] Rodar o [[prompt-gemini]] (`docs/prompt-gemini.md`) na conversa do Gemini e colar a resposta aqui
-- [ ] Tirar as dúvidas abertas do levantamento (porta, acesso à cozinha)
-- [ ] Fase 1: cômodo vazio
+- [x] Croqui feito pelo Claude a partir das fotos
+- [x] Projeto do Gemini recebido e resumido em [[projeto-reforma]] (`docs/projeto-reforma.md`)
+- [x] Simulação 3D, versão 1 (`index.html`), com os cenários "Hoje" e "Com a reforma"
+- [ ] Confirmar onde fica a passagem da cozinha e a largura dela (hoje estimada em 80 cm)
+- [ ] Trocar a lava-louças genérica pelo modelo escolhido (medida real da porta aberta)

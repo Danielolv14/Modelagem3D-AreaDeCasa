@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Área de Serviço 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600&display=swap">
+<style>
+/* Layout: cena 3D em tela cheia; painel de controle por cima, embaixo no celular e à esquerda em telas largas. */
+:root {
+  --bg: #e8ecec;          /* fundo da cena: cinza de rejunte */
+  --surface: #fbfcfb;
+  --ink: #1c2a2e;
+  --muted: #56676c;
+  --line: #ccd6d7;
+  --accent: #1d6470;      /* petróleo */
+  --accent-ink: #ffffff;
+  --focus: #e0a030;
+  --shadow: rgba(20, 40, 45, 0.16);
+  --veil: rgba(251, 252, 251, 0.88);
+  --ok: #26703f;   --ok-bg: #dff1e5;
+  --warn: #8a5800; --warn-bg: #fbedcf;
+  --bad: #ad2a20;  --bad-bg: #fbe2df;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131a1c; --surface: #1c2629; --ink: #e5eef0; --muted: #9aabb0; --line: #2e3c40;
+    --accent: #62b6c3; --accent-ink: #0c1a1d; --focus: #f0b54a; --shadow: rgba(0, 0, 0, 0.45); --veil: rgba(28, 38, 41, 0.88);
+    --ok: #74c992; --ok-bg: #173022; --warn: #e6ae4f; --warn-bg: #34280f; --bad: #f28b82; --bad-bg: #3b1b18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131a1c; --surface: #1c2629; --ink: #e5eef0; --muted: #9aabb0; --line: #2e3c40;
+  --accent: #62b6c3; --accent-ink: #0c1a1d; --focus: #f0b54a; --shadow: rgba(0, 0, 0, 0.45); --veil: rgba(28, 38, 41, 0.88);
+  --ok: #74c992; --ok-bg: #173022; --warn: #e6ae4f; --warn-bg: #34280f; --bad: #f28b82; --bad-bg: #3b1b18;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+
+#app { position: relative; height: 100%; overflow: hidden; }
+#cena, #rotulos { position: absolute; inset: 0; }
+#rotulos { pointer-events: none; z-index: 1; }
+#cena canvas { display: block; touch-action: none; }
+.carregando { position: absolute; inset: 0; display: grid; place-items: center; padding-inline: 16px; color: var(--muted); text-align: center; }
+
+.topo {
+  position: absolute; top: 12px; left: 16px; z-index: 2;
+  width: fit-content; max-width: calc(100% - 32px);
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 12px 7px; border-radius: 10px; background: var(--veil);
+  pointer-events: none;
+}
+.topo h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; letter-spacing: -0.01em; text-wrap: balance; }
+.topo p { margin: 0; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+.painel {
+  position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 2;
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: 50%; overflow-y: auto;
+  padding: 12px 14px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 10px 30px var(--shadow);
+}
+@media (min-width: 860px) {
+  .painel { right: auto; width: 360px; top: 92px; max-height: none; }
+}
+.linha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.linha.entre { justify-content: space-between; }
+
+.segmentado { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.segmentado button {
+  border: 0; border-radius: 7px; padding: 7px 12px;
+  background: transparent; color: var(--ink);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.segmentado button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.botao {
+  border: 1.5px solid var(--accent); border-radius: 10px; padding: 7px 12px;
+  background: transparent; color: var(--accent);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.botao[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.botao:disabled { opacity: 0.45; cursor: not-allowed; }
+.discreto { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; cursor: pointer; padding: 4px; }
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.titulo-secao { margin: 0 0 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+.resultados { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.resultados li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; align-items: baseline; }
+.resultados .nome { font-weight: 700; }
+.resultados .valor { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.resultados .detalhe { grid-column: 1 / -1; color: var(--muted); font-size: 0.82rem; }
+.chip { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em; }
+.chip.ok { color: var(--ok); background: var(--ok-bg); }
+.chip.justo { color: var(--warn); background: var(--warn-bg); }
+.chip.limite { color: var(--bad); background: var(--bad-bg); }
+
+.vistas { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.vistas button {
+  flex: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.vistas button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+.nota { margin: 0; color: var(--muted); font-size: 0.78rem; }
+@media (max-width: 599px) {
+  .painel { max-height: 42%; gap: 10px; padding: 10px 12px 12px; }
+  .resultados .detalhe { display: none; }
+  .resultados { gap: 6px; }
+}
+
+.mostrar-painel {
+  position: absolute; left: 16px; bottom: 16px; z-index: 2;
+  border: 0; border-radius: 10px; padding: 9px 14px;
+  background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px var(--shadow);
+}
+
+.rotulo {
+  padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 1px 4px var(--shadow);
+  font-family: var(--font-body); font-size: 11.5px; line-height: 1.2; white-space: nowrap;
+}
+.rotulo.medida { border-color: transparent; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.rotulo.ok { border-color: transparent; background: var(--ok-bg); color: var(--ok); font-weight: 700; }
+.rotulo.justo { border-color: transparent; background: var(--warn-bg); color: var(--warn); font-weight: 700; }
+.rotulo.limite { border-color: transparent; background: var(--bad-bg); color: var(--bad); font-weight: 700; }
+.rotulo.sutil { opacity: 0.85; font-size: 10.5px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="cena"><div class="carregando" id="carregando">Carregando a área de serviço em 3D…</div></div>
+  <div id="rotulos"></div>
+
+  <header class="topo">
+    <h1>Área de serviço</h1>
+    <p>Simulação aproximada · 2,00 m × 1,20 m</p>
+  </header>
+
+  <section class="painel" id="painel" aria-label="Controles da simulação">
+    <div class="linha entre">
+      <div class="segmentado" role="group" aria-label="Cenário">
+        <button type="button" id="cenario-hoje" aria-pressed="false">Hoje</button>
+        <button type="button" id="cenario-reforma" aria-pressed="true">Com a reforma</button>
+      </div>
+      <button type="button" class="discreto" id="esconder">Esconder painel</button>
+    </div>
+
+    <div class="linha">
+      <button type="button" class="botao" id="portas" aria-pressed="false">Abrir as portas dos aparelhos</button>
+    </div>
+
+    <div>
+      <p class="titulo-secao">Espaço que sobra</p>
+      <ul class="resultados" id="resultados"></ul>
+    </div>
+
+    <div>
+      <p class="titulo-secao">Ver de</p>
+      <div class="vistas" role="group" aria-label="Ponto de vista">
+        <button type="button" data-vista="geral" aria-pressed="true">Visão geral</button>
+        <button type="button" data-vista="cozinha" aria-pressed="false">Da cozinha</button>
+        <button type="button" data-vista="frente" aria-pressed="false">De frente</button>
+        <button type="button" data-vista="janela" aria-pressed="false">Da janela</button>
+        <button type="button" data-vista="cima" aria-pressed="false">De cima</button>
+      </div>
+    </div>
+
+    <div class="linha entre">
+      <p class="nota">Arraste para girar · pinça ou rolagem para zoom</p>
+      <button type="button" class="discreto" id="nomes" aria-pressed="true">Esconder nomes</button>
+    </div>
+    <p class="nota" id="nota-medidas"></p>
+  </section>
+  <button type="button" class="mostrar-painel" id="mostrar" hidden>Mostrar painel</button>
+</div>
+
+<script>
+  // Se o 3D não carregar (sem internet ou navegador antigo), avisa em vez de ficar em branco.
+  setTimeout(function () {
+    if (!window.__cenaPronta) {
+      var el = document.getElementById('carregando');
+      if (el) el.textContent = 'Não foi possível carregar o 3D. Confira a internet e recarregue a página.';
+    }
+  }, 12000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ======================================================================
+//  MEDIDAS (em cm). Tudo que é medida fica aqui.
+//  Origem: canto da PAREDE CEGA com a PAREDE DOS ARMÁRIOS, no chão.
+//  x: da parede cega até a janela · z: da parede dos armários até a
+//  parede da porta · y: altura.  (E) = estimado pelas fotos.
+// ======================================================================
+const M = {
+  comodo: { comprimento: 280, largura: 120, peDireito: 250 },        // comprimento (E): passagem + 2,00 m de bancada
+  passagemCozinha: { inicio: 0, largura: 80, altura: 210 },          // (E) na parede dos armários
+  portaPredio: { inicio: 6, largura: 72, altura: 210 },              // (E) na parede da porta, abre para dentro
+  janela: { inicio: 12, largura: 75, altura: 110, peitoril: 100 },   // (E) início medido da parede da porta
+  armariosAereos: { inicio: 80, fim: 280, profundidade: 35, base: 178, portas: 8 }, // (E)
+  quadroLuz: { inicio: 112, largura: 30, base: 112, altura: 40 },    // (E)
+  interfone: { inicio: 90, largura: 12, base: 165, altura: 15 },     // (E)
+  interruptor: { inicio: 92, largura: 8, base: 104, altura: 12 },    // (E)
+  varal: { inicio: 150, fim: 262, altura: 198 },                     // (E)
+  azulejo: { largura: 33, altura: 45 },                              // (E) só visual
+  piso: { lado: 60 },                                                // (E) só visual
+
+  reforma: {
+    bancada: { inicio: 80, comprimento: 200, profundidade: 70, alturaLivre: 87.5, espessura: 3, rodabanca: 10 },
+    // Da passagem da cozinha para a janela:
+    nichoLavaSeca: 65, nichoLavaLoucas: 50, armarioCuba: 85,
+    lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: 110, centroPorta: 48, folgaFundo: 3 },
+    lavaLoucas: { largura: 44.8, altura: 84.5, profundidade: 60, portaAberta: 118, dobradica: 10, folgaFundo: 3 },
+    cuba: { largura: 30, profundidade: 35 },
+  },
+  hoje: {
+    forno: { inicio: 85, largura: 50, profundidade: 37, alturaSuporte: 75, alturaForno: 32 },  // (E)
+    maquina: { inicio: 140, largura: 56, profundidade: 61, altura: 96, folgaFundo: 3 },      // (E) Consul 9 kg
+    tanque: { inicio: 224, largura: 54, profundidade: 46, alturaBorda: 88 },                 // (E)
+    sapateira: { inicio: 248, fim: 280, z0: 82, z1: 118, altura: 48 },                       // (E)
+    lixeira: { inicio: 252, fim: 276, z0: 52, z1: 74, altura: 45 },                          // (E)
+  },
+  pessoa: { altura: 160, x: 230, z: 96 },
+};
+
+const L = M.comodo.comprimento, W = M.comodo.largura, H = M.comodo.peDireito;
+const B = M.reforma.bancada;
+const xLS0 = B.inicio, xLS1 = xLS0 + M.reforma.nichoLavaSeca;
+const xLL0 = xLS1, xLL1 = xLL0 + M.reforma.nichoLavaLoucas;
+const xAC0 = xLL1, xAC1 = xAC0 + M.reforma.armarioCuba;
+
+// ---------- Contas de folga ----------
+function calcularFolgas() {
+  const ls = M.reforma.lavaSeca, ll = M.reforma.lavaLoucas, maq = M.hoje.maquina;
+  const lsFrente = ls.folgaFundo + ls.profundidade - 5;   // frente do corpo (sem a porta)
+  const lsPorta = ls.portaAberta - (ls.profundidade - 5); // diâmetro da porta
+  const lsEspaco = W - lsFrente;
+  const lsSobra = lsEspaco - lsPorta;
+  const llFrente = ll.folgaFundo + ll.profundidade;
+  const llPorta = ll.portaAberta - ll.profundidade;
+  const llEspaco = W - llFrente;
+  const llSobra = llEspaco - llPorta;
+  const angulo = (espaco, porta) => espaco >= porta ? 90 : THREE.MathUtils.radToDeg(Math.asin(Math.max(0, espaco) / porta));
+  return {
+    corredor: W - B.profundidade,
+    corredorHoje: W - (maq.folgaFundo + maq.profundidade),
+    lsFrente, lsPorta, lsSobra, lsAngulo: angulo(lsEspaco, lsPorta), lsPonta: ls.folgaFundo + ls.portaAberta,
+    llFrente, llPorta, llSobra, llAngulo: angulo(llEspaco, llPorta), llPonta: ll.folgaFundo + ll.portaAberta,
+  };
+}
+const F = calcularFolgas();
+const situacao = sobra => sobra >= 15 ? 'ok' : sobra >= 0 ? 'justo' : 'limite';
+const fmt = n => Math.round(n).toLocaleString('pt-BR');
+
+// ---------- Renderizador ----------
+const S = v => v / 100; // cm → m
+const container = document.getElementById('cena');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (erro) {
+  document.getElementById('carregando').textContent = 'Este navegador não conseguiu abrir o 3D. Tente pelo Chrome ou Safari atualizados.';
+  throw erro;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.getElementById('carregando').remove();
+container.appendChild(renderer.domElement);
+const rotuloRenderer = new CSS2DRenderer({ element: document.getElementById('rotulos') });
+
+const cena = new THREE.Scene();
+// O modelo é escrito com z crescendo da parede dos armários para a parede da porta.
+// Espelhar z deixa a cena igual às fotos: de frente para a bancada, a janela fica à esquerda.
+const ESPELHO = new THREE.Vector3(1, 1, -1);
+const mundo = new THREE.Group();
+mundo.scale.copy(ESPELHO);
+cena.add(mundo);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 60);
+const controles = new OrbitControls(camera, renderer.domElement);
+controles.enableDamping = true;
+controles.dampingFactor = 0.08;
+controles.maxPolarAngle = Math.PI * 0.5;
+controles.minDistance = 0.3;
+controles.maxDistance = 14;
+
+// ---------- Luz ----------
+mundo.add(new THREE.HemisphereLight(0xffffff, 0xcdc4b3, 2.1));
+const sol = new THREE.DirectionalLight(0xfff4e2, 2.2);
+sol.position.set(S(L + 150), S(330), S(W * 0.7));
+sol.target.position.set(S(L / 2), 0, S(W / 2));
+sol.castShadow = true;
+sol.shadow.mapSize.set(1024, 1024);
+Object.assign(sol.shadow.camera, { left: -2.4, right: 2.4, top: 2.4, bottom: -2.4, near: 0.5, far: 9 });
+sol.shadow.bias = -0.0004;
+sol.shadow.normalBias = 0.02;
+mundo.add(sol, sol.target);
+const preenchimento = new THREE.DirectionalLight(0xffffff, 0.7);
+preenchimento.position.set(S(L * 0.3), S(400), S(W * 3));
+mundo.add(preenchimento);
+
+// ---------- Texturas ----------
+function texturaAzulejo(largura, altura, cor, rejunte) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = Math.round(256 * altura / largura);
+  const g = c.getContext('2d');
+  g.fillStyle = cor; g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = rejunte; g.lineWidth = 4; g.strokeRect(0, 0, c.width, c.height);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  t.repeat.set(100 / largura, 100 / altura); // UV em metros
+  return t;
+}
+function texturaGranito() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#545a5e'; g.fillRect(0, 0, 512, 512);
+  const cores = ['#3a3f42', '#6a7175', '#7f8586', '#454b4e', '#90938f'];
+  for (let i = 0; i < 9000; i++) {
+    g.fillStyle = cores[i % cores.length];
+    g.globalAlpha = 0.25 + Math.random() * 0.35;
+    g.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  t.repeat.set(2, 1);
+  return t;
+}
+
+// ---------- Materiais ----------
+const padrao = (cor, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5, ...extra });
+const mat = {
+  azulejo: new THREE.MeshStandardMaterial({ map: texturaAzulejo(M.azulejo.largura, M.azulejo.altura, '#f6f6f3', '#d3d6d2'), roughness: 0.35, side: THREE.DoubleSide }),
+  teto: padrao(0xf7f7f4, { roughness: 0.95, side: THREE.DoubleSide }),
+  liso: padrao(0xf1f1ee, { roughness: 0.6 }),
+  madeira: padrao(0x8f4520, { roughness: 0.55 }),
+  folhaPorta: padrao(0xa5552a, { roughness: 0.5 }),
+  armario: padrao(0xf2f0ea, { roughness: 0.25 }),
+  armarioPorta: padrao(0xf6f4ee, { roughness: 0.22 }),
+  friso: padrao(0xb6b2a8, { roughness: 0.7 }),
+  metal: padrao(0xc9ced1, { roughness: 0.3, metalness: 0.7 }),
+  inox: padrao(0xbfc5c8, { roughness: 0.32, metalness: 0.55 }),
+  inoxPorta: padrao(0xd0d5d7, { roughness: 0.28, metalness: 0.55 }),
+  branco: padrao(0xf4f5f6, { roughness: 0.4 }),
+  cinzaClaro: padrao(0xd9dcde, { roughness: 0.5 }),
+  escuro: padrao(0x2d3236, { roughness: 0.5 }),
+  vidro: padrao(0x56707c, { roughness: 0.08, transparent: true, opacity: 0.88 }),
+  vidroJanela: new THREE.MeshStandardMaterial({ color: 0xbcd8e4, roughness: 0.05, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }),
+  aluminio: padrao(0xdcdfe1, { roughness: 0.4, metalness: 0.3 }),
+  pedra: new THREE.MeshStandardMaterial({ map: texturaGranito(), roughness: 0.28 }),
+  peitoril: padrao(0xe7e3da, { roughness: 0.4 }),
+  quadro: padrao(0xd2d0c3, { roughness: 0.6 }),
+  tanque: padrao(0xece5d3, { roughness: 0.5 }),
+  tanqueFundo: padrao(0xd8cdb2, { roughness: 0.6 }),
+  arame: padrao(0x8d9396, { roughness: 0.45, metalness: 0.5 }),
+  sapateira: padrao(0x2e3134, { roughness: 0.6, transparent: true, opacity: 0.7 }),
+  lixeira: padrao(0x7c8a90, { roughness: 0.5 }),
+  pessoa: new THREE.MeshStandardMaterial({ color: 0x5c7a86, roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }),
+  cozinha: padrao(0xd8d1c1, { roughness: 0.9 }),
+  cota: new THREE.MeshBasicMaterial({ color: 0x1d6470 }),
+};
+
+// ---------- Ajudantes ----------
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+// Caixa definida pelos limites em cm, no sistema do grupo onde for colocada.
+function caixa(x0, x1, y0, y1, z0, z1, material, sombra = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(S(x1 - x0), S(y1 - y0), S(z1 - z0)), material);
+  m.position.set(S((x0 + x1) / 2), S((y0 + y1) / 2), S((z0 + z1) / 2));
+  m.castShadow = sombra; m.receiveShadow = true;
+  return m;
+}
+// Parede plana com vãos (porta, janela, passagem). UV em metros para o azulejo ficar no tamanho certo.
+function parede({ origem, dirU, comprimento, altura, vaos = [], material }) {
+  const us = new Set([0, comprimento]), vs = new Set([0, altura]);
+  for (const o of vaos) { us.add(o.u0); us.add(o.u1); vs.add(o.v0); vs.add(o.v1); }
+  const U = [...us].sort((a, b) => a - b), V = [...vs].sort((a, b) => a - b);
+  const pos = [], uv = [], idx = [];
+  const ponto = (u, v) => [S(origem[0] + dirU[0] * u), S(v), S(origem[2] + dirU[2] * u)];
+  for (let i = 0; i < U.length - 1; i++) {
+    for (let j = 0; j < V.length - 1; j++) {
+      const uc = (U[i] + U[i + 1]) / 2, vc = (V[j] + V[j + 1]) / 2;
+      if (vaos.some(o => uc > o.u0 && uc < o.u1 && vc > o.v0 && vc < o.v1)) continue;
+      const base = pos.length / 3;
+      for (const [u, v] of [[U[i], V[j]], [U[i + 1], V[j]], [U[i + 1], V[j + 1]], [U[i], V[j + 1]]]) {
+        pos.push(...ponto(u, v)); uv.push(S(u), S(v));
+      }
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, material);
+  m.receiveShadow = true;
+  return m;
+}
+const rotulos = [];
+function rotulo(grupo, texto, x, y, z, classe = '', quando = null) {
+  const el = document.createElement('div');
+  el.className = 'rotulo ' + classe;
+  el.textContent = texto;
+  const o = new CSS2DObject(el);
+  o.position.set(S(x), S(y), S(z));
+  o.userData.quando = quando;
+  grupo.add(o);
+  rotulos.push(o);
+  return o;
+}
+// Cota no chão, ao longo de z.
+function cotaChao(grupo, x, z0, z1, texto) {
+  grupo.add(caixa(x - 0.6, x + 0.6, 0.2, 0.6, z0, z1, mat.cota, false));
+  grupo.add(caixa(x - 5, x + 5, 0.2, 0.6, z0, z0 + 1, mat.cota, false));
+  grupo.add(caixa(x - 5, x + 5, 0.2, 0.6, z1 - 1, z1, mat.cota, false));
+  rotulo(grupo, texto, x, 4, (z0 + z1) / 2, 'medida');
+}
+
+// ---------- Paredes (cada uma some quando a câmera está do lado de fora dela) ----------
+const paredes = [];
+function grupoParede(ponto, normal) {
+  const g = new THREE.Group();
+  mundo.add(g);
+  paredes.push({ grupo: g, ponto: ponto.multiply(ESPELHO), normal: normal.multiply(ESPELHO) });
+  return g;
+}
+const gArmarios = grupoParede(v3(0, 0, 0), v3(0, 0, 1));
+const gPorta = grupoParede(v3(0, 0, S(W)), v3(0, 0, -1));
+const gJanela = grupoParede(v3(S(L), 0, 0), v3(-1, 0, 0));
+const gCega = grupoParede(v3(0, 0, 0), v3(1, 0, 0));
+const gTeto = grupoParede(v3(0, S(H), 0), v3(0, -1, 0));
+
+const P = M.passagemCozinha, Pp = M.portaPredio, J = M.janela;
+gArmarios.add(parede({ origem: [0, 0, 0], dirU: [1, 0, 0], comprimento: L, altura: H,
+  vaos: [{ u0: P.inicio, u1: P.inicio + P.largura, v0: 0, v1: P.altura }], material: mat.azulejo }));
+gPorta.add(parede({ origem: [0, 0, W], dirU: [1, 0, 0], comprimento: L, altura: H,
+  vaos: [{ u0: Pp.inicio, u1: Pp.inicio + Pp.largura, v0: 0, v1: Pp.altura }], material: mat.azulejo }));
+const jz1 = W - J.inicio, jz0 = jz1 - J.largura, jy0 = J.peitoril, jy1 = J.peitoril + J.altura;
+gJanela.add(parede({ origem: [L, 0, 0], dirU: [0, 0, 1], comprimento: W, altura: H,
+  vaos: [{ u0: jz0, u1: jz1, v0: jy0, v1: jy1 }], material: mat.azulejo }));
+gCega.add(parede({ origem: [0, 0, 0], dirU: [0, 0, 1], comprimento: W, altura: H, material: mat.azulejo }));
+const teto = new THREE.Mesh(new THREE.PlaneGeometry(S(L), S(W)), mat.teto);
+teto.rotation.x = Math.PI / 2;
+teto.position.set(S(L / 2), S(H), S(W / 2));
+gTeto.add(teto);
+
+// Piso
+const texPiso = texturaAzulejo(M.piso.lado, M.piso.lado, '#e5dfd2', '#c8c0af');
+texPiso.repeat.set(L / M.piso.lado, W / M.piso.lado);
+const piso = new THREE.Mesh(new THREE.PlaneGeometry(S(L), S(W)), new THREE.MeshStandardMaterial({ map: texPiso, roughness: 0.55 }));
+piso.rotation.x = -Math.PI / 2;
+piso.position.set(S(L / 2), 0, S(W / 2));
+piso.receiveShadow = true;
+mundo.add(piso);
+
+// Passagem para a cozinha (espessura da parede e um pedaço do piso da cozinha)
+gArmarios.add(caixa(P.inicio, P.inicio + P.largura, P.altura, P.altura + 1, -12, 0, mat.liso, false));
+gArmarios.add(caixa(P.inicio + P.largura, P.inicio + P.largura + 1, 0, P.altura + 1, -12, 0, mat.liso, false));
+const pisoCozinha = new THREE.Mesh(new THREE.PlaneGeometry(S(P.largura + 40), S(60)), mat.cozinha);
+pisoCozinha.rotation.x = -Math.PI / 2;
+pisoCozinha.position.set(S(P.inicio + P.largura / 2), -0.002, S(-30));
+pisoCozinha.receiveShadow = true;
+mundo.add(pisoCozinha);
+rotulo(mundo, 'Passagem para a cozinha', P.inicio + P.largura / 2, 6, 2, 'sutil');
+
+// Porta do corredor do prédio (abre para dentro, dobradiça do lado da parede cega)
+gPorta.add(caixa(Pp.inicio - 5, Pp.inicio, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+gPorta.add(caixa(Pp.inicio + Pp.largura, Pp.inicio + Pp.largura + 5, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+gPorta.add(caixa(Pp.inicio - 5, Pp.inicio + Pp.largura + 5, Pp.altura, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+gPorta.add(caixa(Pp.inicio, Pp.inicio + Pp.largura, 0.5, Pp.altura, W - 1, W + 3, mat.folhaPorta));
+gPorta.add(caixa(Pp.inicio + Pp.largura - 11, Pp.inicio + Pp.largura - 3, 99, 102, W - 4, W - 1, mat.metal));
+gPorta.add(caixa(Pp.inicio + Pp.largura - 7, Pp.inicio + Pp.largura - 4, 140, 144, W - 2.5, W - 1, mat.metal));
+rotulo(gPorta, 'Porta do corredor do prédio', Pp.inicio + Pp.largura / 2, Pp.altura + 14, W - 4);
+const setor = new THREE.Mesh(new THREE.CircleGeometry(S(Pp.largura), 40, 0, Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.13, depthWrite: false }));
+const arco = new THREE.Mesh(new THREE.RingGeometry(S(Pp.largura - 1), S(Pp.largura), 40, 1, 0, Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.6, depthWrite: false }));
+for (const m of [setor, arco]) {
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(S(Pp.inicio), 0.004, S(W));
+  mundo.add(m);
+}
+
+// Interfone, interruptor, quadro de luz, varal sanfonado
+const Q = M.quadroLuz, I = M.interfone, Ir = M.interruptor, Va = M.varal;
+gPorta.add(caixa(Q.inicio, Q.inicio + Q.largura, Q.base, Q.base + Q.altura, W - 1.5, W, mat.quadro));
+gPorta.add(caixa(I.inicio, I.inicio + I.largura, I.base, I.base + I.altura, W - 4, W, mat.armario));
+gPorta.add(caixa(Ir.inicio, Ir.inicio + Ir.largura, Ir.base, Ir.base + Ir.altura, W - 1, W, mat.armario));
+gPorta.add(caixa(Va.inicio, Va.fim, Va.altura - 2, Va.altura + 2, W - 9, W - 5, mat.aluminio));
+gPorta.add(caixa(Va.inicio, Va.inicio + 3, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
+gPorta.add(caixa(Va.fim - 3, Va.fim, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
+
+// Janela de correr
+gJanela.add(caixa(L - 6, L, jy0, jy0 + 4, jz0, jz1, mat.aluminio));
+gJanela.add(caixa(L - 6, L, jy1 - 4, jy1, jz0, jz1, mat.aluminio));
+gJanela.add(caixa(L - 6, L, jy0, jy1, jz0, jz0 + 4, mat.aluminio));
+gJanela.add(caixa(L - 6, L, jy0, jy1, jz1 - 4, jz1, mat.aluminio));
+gJanela.add(caixa(L - 5, L - 2, jy0, jy1, (jz0 + jz1) / 2 - 2, (jz0 + jz1) / 2 + 2, mat.aluminio));
+gJanela.add(caixa(L - 8, L, jy0 - 3, jy0, jz0 - 3, jz1 + 3, mat.peitoril));
+const vidro = new THREE.Mesh(new THREE.PlaneGeometry(S(J.largura - 8), S(J.altura - 8)), mat.vidroJanela);
+vidro.rotation.y = Math.PI / 2;
+vidro.position.set(S(L - 3), S((jy0 + jy1) / 2), S((jz0 + jz1) / 2));
+gJanela.add(vidro);
+rotulo(gJanela, 'Janela', L - 4, jy1 + 10, (jz0 + jz1) / 2, 'sutil');
+
+// Armários aéreos (já existem; ficam nos dois cenários)
+const A = M.armariosAereos;
+const aereos = new THREE.Group();
+gArmarios.add(aereos);
+aereos.add(caixa(A.inicio, A.fim, A.base, H, 0, A.profundidade, mat.armario));
+const lPortaArm = (A.fim - A.inicio) / A.portas;
+for (let i = 1; i < A.portas; i++) {
+  const x = A.inicio + i * lPortaArm;
+  aereos.add(caixa(x - 0.25, x + 0.25, A.base + 1, H - 1, A.profundidade, A.profundidade + 0.3, mat.friso, false));
+}
+for (let i = 1; i < A.portas; i += 2) {
+  const x = A.inicio + i * lPortaArm;
+  for (const dx of [-3.5, 3.5]) aereos.add(caixa(x + dx - 0.6, x + dx + 0.6, A.base + 4, A.base + 18, A.profundidade + 0.5, A.profundidade + 2.2, mat.metal));
+}
+
+// ---------- Cenário: com a reforma ----------
+const gReforma = new THREE.Group();
+mundo.add(gReforma);
+const yPedra = B.alturaLivre, yTopo = B.alturaLivre + B.espessura;
+gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yPedra, yTopo, 0, B.profundidade, mat.pedra));
+gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yTopo, yTopo + B.rodabanca, 0, 2, mat.pedra));
+
+// Armário com a cuba
+const meioAC = (xAC0 + xAC1) / 2;
+gReforma.add(caixa(xAC0 + 0.5, xAC1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
+gReforma.add(caixa(xAC0 + 1.5, xAC1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
+gReforma.add(caixa(xAC0 + 0.5, meioAC - 0.25, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+gReforma.add(caixa(meioAC + 0.25, xAC1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+for (const dx of [-4, 4]) gReforma.add(caixa(meioAC + dx - 0.6, meioAC + dx + 0.6, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+const C = M.reforma.cuba, zCuba = 12 + C.profundidade / 2;
+gReforma.add(caixa(meioAC - C.largura / 2, meioAC + C.largura / 2, yTopo - 0.2, yTopo + 0.15, zCuba - C.profundidade / 2, zCuba + C.profundidade / 2, mat.inox, false));
+gReforma.add(caixa(meioAC - C.largura / 2 + 2.5, meioAC + C.largura / 2 - 2.5, yTopo + 0.15, yTopo + 0.25, zCuba - C.profundidade / 2 + 2.5, zCuba + C.profundidade / 2 - 2.5, mat.escuro, false));
+const tubo = new THREE.Mesh(new THREE.CylinderGeometry(S(1.3), S(1.7), S(28), 16), mat.metal);
+tubo.position.set(S(meioAC), S(yTopo + 14), S(6));
+tubo.castShadow = true;
+gReforma.add(tubo);
+gReforma.add(caixa(meioAC - 1.1, meioAC + 1.1, yTopo + 25, yTopo + 28, 6, 24, mat.metal));
+rotulo(gReforma, 'Armário com cuba · 85 cm', meioAC, yTopo + 14, B.profundidade - 6);
+
+// Lava e seca (porta redonda com dobradiça à esquerda de quem olha)
+const LS = M.reforma.lavaSeca;
+const lsx0 = (xLS0 + xLS1) / 2 - LS.largura / 2, lsx1 = lsx0 + LS.largura;
+gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.lsFrente, mat.branco));
+gReforma.add(caixa(lsx0 + 3, lsx0 + 20, LS.altura - 11, LS.altura - 3, F.lsFrente, F.lsFrente + 0.6, mat.cinzaClaro));
+gReforma.add(caixa(lsx0 + 28, lsx1 - 4, LS.altura - 10, LS.altura - 4, F.lsFrente, F.lsFrente + 0.4, mat.escuro));
+const rPorta = F.lsPorta / 2;
+const pivoLS = new THREE.Group();
+pivoLS.position.set(S((lsx0 + lsx1) / 2 + rPorta), S(LS.centroPorta), S(F.lsFrente));
+gReforma.add(pivoLS);
+const aro = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta), S(rPorta), S(5), 48), mat.escuro);
+aro.rotation.x = Math.PI / 2;
+aro.position.set(S(-rPorta), 0, S(2.5));
+aro.castShadow = true;
+const visor = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta * 0.68), S(rPorta * 0.68), S(5.4), 40), mat.vidro);
+visor.rotation.x = Math.PI / 2;
+visor.position.copy(aro.position);
+pivoLS.add(aro, visor);
+rotulo(gReforma, 'Lava e seca · 60 cm', (xLS0 + xLS1) / 2, yTopo + 14, B.profundidade - 6);
+
+// Lava-louças (porta abre para baixo)
+const LL = M.reforma.lavaLoucas;
+const llx0 = (xLL0 + xLL1) / 2 - LL.largura / 2, llx1 = llx0 + LL.largura;
+gReforma.add(caixa(llx0, llx1, LL.dobradica, LL.altura, LL.folgaFundo, F.llFrente - 3, mat.inox));
+gReforma.add(caixa(llx0 + 1, llx1 - 1, 0, LL.dobradica, LL.folgaFundo + 2, F.llFrente - 5, mat.escuro, false));
+gReforma.add(caixa(llx0, llx1, LL.dobradica + F.llPorta, LL.altura, F.llFrente - 3, F.llFrente, mat.escuro));
+gReforma.add(caixa(llx0 + 4, llx0 + 16, LL.altura - 11, LL.altura - 6, F.llFrente, F.llFrente + 0.3, mat.cinzaClaro, false));
+const pivoLL = new THREE.Group();
+pivoLL.position.set(S((llx0 + llx1) / 2), S(LL.dobradica), S(F.llFrente));
+gReforma.add(pivoLL);
+pivoLL.add(caixa(-LL.largura / 2, LL.largura / 2, 0, F.llPorta, -3, 0, mat.inoxPorta));
+pivoLL.add(caixa(-15, 15, F.llPorta - 7, F.llPorta - 4, 0, 1.6, mat.metal));
+rotulo(gReforma, 'Lava-louças · 45 cm', (xLL0 + xLL1) / 2, yTopo + 30, B.profundidade - 6);
+
+cotaChao(gReforma, xAC0 + 10, B.profundidade, W, `≈ ${fmt(F.corredor)} cm livres`);
+const portasAbertas = () => cenario === 'reforma' && progressoPortas > 0.95;
+rotulo(gReforma, F.lsSobra >= 0 ? `sobram ≈ ${fmt(F.lsSobra)} cm` : 'encosta na parede',
+  (lsx0 + lsx1) / 2 - 14, 30, Math.min(W - 4, F.lsPonta + 2), situacao(F.lsSobra), portasAbertas);
+rotulo(gReforma, F.llSobra >= 0 ? `sobram ≈ ${fmt(F.llSobra)} cm` : 'encosta na parede',
+  (llx0 + llx1) / 2, 22, W - 6, situacao(F.llSobra), portasAbertas);
+
+// ---------- Cenário: hoje ----------
+const gHoje = new THREE.Group();
+mundo.add(gHoje);
+const Fo = M.hoje.forno, Ma = M.hoje.maquina, Ta = M.hoje.tanque, Sa = M.hoje.sapateira, Lx = M.hoje.lixeira;
+for (const x of [Fo.inicio + 1, Fo.inicio + Fo.largura - 1]) {
+  for (const z of [4, 3 + Fo.profundidade - 1]) gHoje.add(caixa(x - 0.6, x + 0.6, 0, Fo.alturaSuporte, z - 0.6, z + 0.6, mat.arame));
+}
+for (const y of [3, 38]) gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, y, y + 1, 3, 3 + Fo.profundidade, mat.arame));
+gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, Fo.alturaSuporte, Fo.alturaSuporte + Fo.alturaForno, 3, 3 + Fo.profundidade, mat.branco));
+gHoje.add(caixa(Fo.inicio + 2, Fo.inicio + Fo.largura - 9, Fo.alturaSuporte + 3, Fo.alturaSuporte + Fo.alturaForno - 3, 3 + Fo.profundidade, 3.6 + Fo.profundidade, mat.escuro));
+rotulo(gHoje, 'Forno', Fo.inicio + Fo.largura / 2, Fo.alturaSuporte + Fo.alturaForno + 10, 3 + Fo.profundidade / 2);
+
+const zMaq0 = Ma.folgaFundo, zMaq1 = Ma.folgaFundo + Ma.profundidade;
+gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, 0.5, Ma.altura - 8, zMaq0, zMaq1, mat.branco));
+gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, Ma.altura - 8, Ma.altura, zMaq0, zMaq0 + 12, mat.branco));
+gHoje.add(caixa(Ma.inicio + 3, Ma.inicio + Ma.largura - 3, Ma.altura - 8, Ma.altura - 6, zMaq0 + 14, zMaq1 - 3, mat.escuro));
+gHoje.add(caixa(Ma.inicio + 7, Ma.inicio + Ma.largura - 7, Ma.altura - 6, Ma.altura - 5.5, zMaq0 + 18, zMaq1 - 7, mat.vidro, false));
+rotulo(gHoje, 'Máquina atual', Ma.inicio + Ma.largura / 2, Ma.altura + 10, (zMaq0 + zMaq1) / 2);
+
+gHoje.add(caixa(Ta.inicio, Ta.inicio + Ta.largura, Ta.alturaBorda - 26, Ta.alturaBorda, 0, Ta.profundidade, mat.tanque));
+gHoje.add(caixa(Ta.inicio + 4, Ta.inicio + Ta.largura - 4, Ta.alturaBorda, Ta.alturaBorda + 0.3, 4, Ta.profundidade - 4, mat.tanqueFundo, false));
+gHoje.add(caixa(Ta.inicio + Ta.largura / 2 - 1, Ta.inicio + Ta.largura / 2 + 1, Ta.alturaBorda + 22, Ta.alturaBorda + 25, 0, 10, mat.metal));
+rotulo(gHoje, 'Tanque', Ta.inicio + Ta.largura / 2, Ta.alturaBorda + 34, Ta.profundidade / 2);
+
+gHoje.add(caixa(Sa.inicio, Sa.fim, 0, Sa.altura, Sa.z0, Sa.z1, mat.sapateira));
+gHoje.add(caixa(Lx.inicio, Lx.fim, 0, Lx.altura, Lx.z0, Lx.z1, mat.lixeira));
+cotaChao(gHoje, Ma.inicio + Ma.largura / 2, zMaq1, W, `≈ ${fmt(F.corredorHoje)} cm livres`);
+
+// ---------- Pessoa de 1,60 m para dar escala ----------
+const pessoa = new THREE.Group();
+const raio = 16, cabeca = 12, alturaCorpo = M.pessoa.altura - 2 * cabeca - 4;
+const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(S(raio), S(alturaCorpo - 2 * raio), 6, 16), mat.pessoa);
+tronco.scale.z = 0.6;
+tronco.position.y = S(alturaCorpo / 2);
+const bola = new THREE.Mesh(new THREE.SphereGeometry(S(cabeca), 20, 14), mat.pessoa);
+bola.position.y = S(M.pessoa.altura - cabeca);
+pessoa.add(tronco, bola);
+pessoa.position.set(S(M.pessoa.x), 0, S(M.pessoa.z));
+mundo.add(pessoa);
+rotulo(pessoa, 'pessoa de 1,60 m', 0, M.pessoa.altura + 10, 0, 'sutil');
+
+// ---------- Vistas ----------
+// A cena é centralizada na área que o painel deixa livre.
+let largura = 1, altura = 1, livre = { w: 1, h: 1 };
+const painel = document.getElementById('painel'), mostrar = document.getElementById('mostrar'), topo = document.querySelector('.topo');
+const telaLarga = window.matchMedia('(min-width: 860px)');
+function atualizarAreaLivre() {
+  let x0 = 0, x1 = largura, y0 = topo.offsetTop + topo.offsetHeight + 8, y1 = altura;
+  if (!painel.hidden) {
+    if (telaLarga.matches) { x0 = painel.offsetLeft + painel.offsetWidth + 8; y0 = 0; }
+    else y1 = painel.offsetTop - 8;
+  }
+  livre = { w: Math.max(80, x1 - x0), h: Math.max(80, y1 - y0) };
+  const dx = (x0 + x1) / 2 - largura / 2, dy = (y0 + y1) / 2 - altura / 2;
+  camera.setViewOffset(largura, altura, -dx, -dy, largura, altura);
+}
+const fovInterno = () => THREE.MathUtils.clamp(
+  2 * THREE.MathUtils.radToDeg(Math.atan(Math.tan(THREE.MathUtils.degToRad(33)) * altura / livre.w)), 62, 90);
+function enquadrar(alvo, direcao, larguraCena, alturaCena, fov) {
+  const t = Math.tan(THREE.MathUtils.degToRad(fov) / 2);
+  const tv = t * livre.h / altura, th = t * livre.w / altura;
+  const d = Math.max(alturaCena / 2 / tv, larguraCena / 2 / th) * 1.08;
+  return { pos: alvo.clone().add(direcao.clone().normalize().multiplyScalar(d)), alvo, fov };
+}
+const retrato = () => livre.w < livre.h;
+const VISTAS = {
+  geral: () => retrato()
+    ? enquadrar(v3(S(L * 0.55), S(70), S(W * 0.45)), v3(-0.8, 1.05, 0.75), 2.2, 2.6, 45)
+    : enquadrar(v3(S(L * 0.5), S(80), S(W * 0.45)), v3(0.25, 0.85, 1), 3.4, 2.2, 45),
+  cozinha: () => ({ pos: v3(S(25), S(158), S(W * 0.62)), alvo: v3(S(L - 20), S(80), S(25)), fov: fovInterno() }),
+  frente: () => enquadrar(v3(S(B.inicio + B.comprimento / 2), S(95), S(B.profundidade / 2)), v3(0, 0.12, 1), S(B.comprimento + 40), 2.1, 40),
+  janela: () => ({ pos: v3(S(L - 12), S(155), S(W * 0.78)), alvo: v3(S(60), S(70), S(W * 0.35)), fov: fovInterno() }),
+  cima: () => {
+    const alvo = v3(S(L / 2), 0, S((W - 60) / 2));
+    const vista = retrato()
+      ? enquadrar(alvo, v3(0.002, 1, 0), S(W + 100), S(L + 40), 24)
+      : enquadrar(alvo, v3(0, 1, 0.002), S(L + 40), S(W + 100), 24);
+    return vista;
+  },
+};
+let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
+const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
+function irPara(nome, instantaneo = false) {
+  vistaAtual = nome;
+  usuarioMexeu = false;
+  pessoa.visible = nome !== 'frente' && nome !== 'janela'; // nessas vistas a pessoa taparia a bancada
+  aereos.visible = nome !== 'cima';
+  const v = VISTAS[nome]();
+  v.pos.multiply(ESPELHO);
+  v.alvo.multiply(ESPELHO);
+  document.querySelectorAll('[data-vista]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vista === nome)));
+  if (instantaneo || reduzirMovimento.matches) {
+    camera.position.copy(v.pos); controles.target.copy(v.alvo);
+    camera.fov = v.fov; camera.updateProjectionMatrix();
+    transicao = null;
+    return;
+  }
+  transicao = { t: 0, de: { pos: camera.position.clone(), alvo: controles.target.clone(), fov: camera.fov }, para: v };
+}
+controles.addEventListener('start', () => { usuarioMexeu = true; transicao = null; });
+
+// ---------- Cenário e portas ----------
+let cenario = 'reforma', progressoPortas = 0, alvoPortas = 0, mostrarNomes = true;
+const botaoPortas = document.getElementById('portas');
+function definirCenario(nome) {
+  cenario = nome;
+  gReforma.visible = nome === 'reforma';
+  gHoje.visible = nome === 'hoje';
+  document.getElementById('cenario-hoje').setAttribute('aria-pressed', String(nome === 'hoje'));
+  document.getElementById('cenario-reforma').setAttribute('aria-pressed', String(nome === 'reforma'));
+  botaoPortas.disabled = nome !== 'reforma';
+  if (nome !== 'reforma') definirPortas(false);
+  atualizarPainel();
+}
+function definirPortas(abrir) {
+  alvoPortas = abrir ? 1 : 0;
+  botaoPortas.setAttribute('aria-pressed', String(abrir));
+  botaoPortas.textContent = abrir ? 'Fechar as portas dos aparelhos' : 'Abrir as portas dos aparelhos';
+}
+function aplicarPortas(p) {
+  pivoLS.rotation.y = THREE.MathUtils.degToRad(F.lsAngulo) * p;
+  pivoLL.rotation.x = THREE.MathUtils.degToRad(F.llAngulo) * p;
+}
+
+// ---------- Painel ----------
+const textosChip = { ok: 'folgado', justo: 'justo', limite: 'no limite' };
+function itemResultado(nome, valor, classe, chip, detalhe) {
+  const li = document.createElement('li');
+  const n = document.createElement('span'); n.className = 'nome'; n.textContent = nome;
+  const v = document.createElement('span'); v.className = 'valor'; v.textContent = valor;
+  if (chip) { const c = document.createElement('span'); c.className = 'chip ' + classe; c.textContent = chip; v.append(c); }
+  const d = document.createElement('span'); d.className = 'detalhe'; d.textContent = detalhe;
+  li.append(n, v, d);
+  return li;
+}
+function atualizarPainel() {
+  const ul = document.getElementById('resultados');
+  ul.replaceChildren();
+  if (cenario === 'hoje') {
+    ul.append(itemResultado('Corredor hoje', `≈ ${fmt(F.corredorHoje)} cm`, 'ok', 'passa 1 pessoa',
+      'Da frente da máquina atual até a parede da porta.'));
+    return;
+  }
+  ul.append(itemResultado('Corredor com tudo fechado', `≈ ${fmt(F.corredor)} cm`, 'ok', 'passa 1 pessoa',
+    `Da frente da bancada (${fmt(B.profundidade)} cm de fundo) até a parede da porta.`));
+  const sLS = situacao(F.lsSobra);
+  ul.append(itemResultado('Lava e seca aberta', F.lsSobra >= 0 ? `sobram ≈ ${fmt(F.lsSobra)} cm` : 'encosta', sLS, textosChip[sLS],
+    `Com a porta aberta, ocupa ≈ ${fmt(F.lsPonta)} cm a partir da parede de trás.`));
+  const sLL = situacao(F.llSobra);
+  ul.append(itemResultado('Lava-louças aberta', F.llSobra >= 0 ? `sobram ≈ ${fmt(F.llSobra)} cm` : 'encosta', sLL, textosChip[sLL],
+    F.llSobra >= 0
+      ? `Com a porta deitada, ocupa ≈ ${fmt(F.llPonta)} cm a partir da parede de trás.`
+      : `A porta deitada precisaria de ≈ ${fmt(F.llPonta)} cm e o corredor tem ${fmt(W)}. Ela para em ≈ ${fmt(F.llAngulo)}°, quase deitada.`));
+}
+document.getElementById('nota-medidas').textContent =
+  'Medidas aproximadas, para ter noção do espaço. Aparelhos com medidas de catálogo: lava e seca Samsung WD11M (60 × 85 × 65 cm) ' +
+  'e lava-louças de 10 serviços (45 × 85 × 60 cm). A lava-louças aberta usa a média dos fabricantes (115 a 120 cm): confira no manual do modelo escolhido.';
+
+document.getElementById('cenario-hoje').addEventListener('click', () => definirCenario('hoje'));
+document.getElementById('cenario-reforma').addEventListener('click', () => definirCenario('reforma'));
+botaoPortas.addEventListener('click', () => definirPortas(alvoPortas === 0));
+document.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click', () => irPara(b.dataset.vista)));
+const botaoNomes = document.getElementById('nomes');
+botaoNomes.addEventListener('click', () => {
+  mostrarNomes = !mostrarNomes;
+  botaoNomes.setAttribute('aria-pressed', String(mostrarNomes));
+  botaoNomes.textContent = mostrarNomes ? 'Esconder nomes' : 'Mostrar nomes';
+});
+document.getElementById('esconder').addEventListener('click', () => { painel.hidden = true; mostrar.hidden = false; mostrar.focus(); });
+mostrar.addEventListener('click', () => { painel.hidden = false; mostrar.hidden = true; });
+
+// ---------- Tema ----------
+function aplicarTema() {
+  const cor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  cena.background = new THREE.Color(cor || '#e8ecec');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicarTema);
+new MutationObserver(aplicarTema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+aplicarTema();
+
+// ---------- Tamanho da tela ----------
+function redimensionar() {
+  largura = container.clientWidth || window.innerWidth;
+  altura = container.clientHeight || window.innerHeight;
+  renderer.setSize(largura, altura);
+  rotuloRenderer.setSize(largura, altura);
+  camera.aspect = largura / altura;
+  atualizarAreaLivre();
+  camera.updateProjectionMatrix();
+  if (!usuarioMexeu) irPara(vistaAtual, true);
+}
+window.addEventListener('resize', redimensionar);
+new ResizeObserver(redimensionar).observe(painel);
+mostrar.addEventListener('click', () => requestAnimationFrame(redimensionar));
+
+// ---------- Laço de desenho ----------
+const relogio = new THREE.Clock();
+const tmp = new THREE.Vector3();
+const suave = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function visivel(o) { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; }
+function quadro() {
+  const dt = Math.min(relogio.getDelta(), 0.05);
+  if (transicao) {
+    transicao.t = Math.min(1, transicao.t + dt / 0.7);
+    const k = suave(transicao.t), { de, para } = transicao;
+    camera.position.lerpVectors(de.pos, para.pos, k);
+    controles.target.lerpVectors(de.alvo, para.alvo, k);
+    camera.fov = de.fov + (para.fov - de.fov) * k;
+    camera.updateProjectionMatrix();
+    if (transicao.t >= 1) transicao = null;
+  }
+  if (progressoPortas !== alvoPortas) {
+    const passo = reduzirMovimento.matches ? 1 : dt / 0.9;
+    progressoPortas = alvoPortas > progressoPortas ? Math.min(alvoPortas, progressoPortas + passo) : Math.max(alvoPortas, progressoPortas - passo);
+    aplicarPortas(suave(progressoPortas));
+  }
+  controles.update();
+  for (const p of paredes) p.grupo.visible = tmp.subVectors(camera.position, p.ponto).dot(p.normal) > -0.01;
+  for (const r of rotulos) r.visible = mostrarNomes && visivel(r.parent) && (!r.userData.quando || r.userData.quando());
+  renderer.render(cena, camera);
+  rotuloRenderer.render(cena, camera);
+  requestAnimationFrame(quadro);
+}
+
+definirCenario('reforma');
+definirPortas(false);
+redimensionar();
+window.__cenaPronta = true;
+requestAnimationFrame(quadro);
+</script>
+</body>
+</html>

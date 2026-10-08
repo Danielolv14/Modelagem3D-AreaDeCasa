@@ -49,8 +49,10 @@ fica no outro.
 - **O quadro de disjuntores precisa continuar acessível.** Nenhum equipamento pode ficar na frente dele.
 - O corredor entre a frente da máquina/forno e a parede da porta é o espaço de circulação crítico.
 
-## Dúvidas abertas
+## Respostas e conclusões
 
-- [ ] A porta de madeira dá para onde: corredor do prédio ou cozinha?
-- [ ] Por onde se entra na área vindo da cozinha? Pelo ângulo da foto 1, parece haver um vão perto do forno, no canto da parede cega com a dos armários.
-- [ ] Foto extra: em pé encostado na porta de madeira, olhando para o lado do forno (canto da parede cega com a dos armários).
+- **Porta de madeira:** dá para o **corredor do prédio** (resposta do usuário em 2026-10-08).
+- **Passagem da cozinha:** o usuário veio da cozinha ao tirar as fotos 1 e 2. Pelo ângulo das fotos, a passagem fica **na parede dos armários, no canto da parede cega**, logo antes do forno. Largura estimada em 80 cm, ainda **a confirmar**.
+- **Orientação:** quem olha da cozinha para a janela tem os armários à **direita**. De frente para a bancada, a janela fica à **esquerda**.
+- A porta do prédio abre para dentro, e a área que ela varre fica em frente à passagem da cozinha. Por isso não bate na bancada nova, que começa depois da passagem.
+- **Sapateira e lixeira** (canto da janela) não cabem na frente da bancada nova: sobrariam só ~15 cm para passar. Vão precisar de outro lugar.
