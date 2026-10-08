@@ -88,6 +88,8 @@ body {
   font: inherit; font-weight: 700; cursor: pointer;
 }
 .segmentado button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.segmentado.pequeno button { padding: 6px 9px; font-size: 0.85rem; }
+.rotulo-linha { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
 
 .botao {
   border: 1.5px solid var(--accent); border-radius: 10px; padding: 7px 12px;
@@ -97,6 +99,7 @@ body {
 .botao[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .botao:disabled { opacity: 0.45; cursor: not-allowed; }
 .discreto { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; cursor: pointer; padding: 4px; }
+.discreto:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
 button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 .titulo-secao { margin: 0 0 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -119,6 +122,17 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .vistas button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 
 .nota { margin: 0; color: var(--muted); font-size: 0.78rem; }
+
+.ajustes { border-top: 1px solid var(--line); padding-top: 10px; }
+.ajustes summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+.ajustes summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.campo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: baseline; margin-top: 12px; }
+.campo label { font-size: 0.88rem; }
+.campo output { font-weight: 700; font-variant-numeric: tabular-nums; }
+.campo input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; accent-color: var(--accent); }
+.campo input[type="range"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.campo .ajuda { grid-column: 1 / -1; margin: 0; font-size: 0.78rem; color: var(--muted); }
+.ajustes .discreto { margin-top: 8px; }
 @media (max-width: 599px) {
   .painel { max-height: 42%; gap: 10px; padding: 10px 12px 12px; }
   .resultados .detalhe { display: none; }
@@ -151,7 +165,7 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   <header class="topo">
     <h1>Área de serviço</h1>
-    <p>Simulação aproximada · 2,00 m × 1,20 m</p>
+    <p id="subtitulo">Simulação aproximada · 2,00 m × 1,20 m</p>
   </header>
 
   <section class="painel" id="painel" aria-label="Controles da simulação">
@@ -161,6 +175,14 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
         <button type="button" id="cenario-reforma" aria-pressed="true">Com a reforma</button>
       </div>
       <button type="button" class="discreto" id="esconder">Esconder painel</button>
+    </div>
+
+    <div class="linha" id="linha-variante">
+      <span class="rotulo-linha">Lava-louças</span>
+      <div class="segmentado pequeno" role="group" aria-label="Tipo de lava-louças">
+        <button type="button" id="variante-piso" aria-pressed="true">De piso · 10 serv.</button>
+        <button type="button" id="variante-bancada" aria-pressed="false">De bancada · 8 serv.</button>
+      </div>
     </div>
 
     <div class="linha">
@@ -182,6 +204,12 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
         <button type="button" data-vista="cima" aria-pressed="false">De cima</button>
       </div>
     </div>
+
+    <details class="ajustes" id="ajustes">
+      <summary>E se…? Ajustar medidas</summary>
+      <div id="campos"></div>
+      <button type="button" class="discreto" id="restaurar">Voltar às medidas originais</button>
+    </details>
 
     <div class="linha entre">
       <p class="nota">Arraste para girar · pinça ou rolagem para zoom</p>
@@ -215,70 +243,91 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // ======================================================================
-//  MEDIDAS (em cm). Tudo que é medida fica aqui.
+//  MEDIDAS (em cm)
 //  Origem: canto da PAREDE CEGA com a PAREDE DOS ARMÁRIOS, no chão.
 //  x: da parede cega até a janela · z: da parede dos armários até a
 //  parede da porta · y: altura.  (E) = estimado pelas fotos.
+//  As medidas de PADRAO podem ser mudadas na página, em "E se…?".
 // ======================================================================
-const M = {
-  comodo: { comprimento: 280, largura: 120, peDireito: 250 },        // comprimento (E): passagem + 2,00 m de bancada
-  passagemCozinha: { inicio: 0, largura: 80, altura: 210 },          // (E) na parede dos armários
-  portaPredio: { inicio: 6, largura: 72, altura: 210 },              // (E) na parede da porta, abre para dentro
-  janela: { inicio: 12, largura: 75, altura: 110, peitoril: 100 },   // (E) início medido da parede da porta
-  armariosAereos: { inicio: 80, fim: 280, profundidade: 35, base: 178, portas: 8 }, // (E)
-  quadroLuz: { inicio: 112, largura: 30, base: 112, altura: 40 },    // (E)
-  interfone: { inicio: 90, largura: 12, base: 165, altura: 15 },     // (E)
-  interruptor: { inicio: 92, largura: 8, base: 104, altura: 12 },    // (E)
-  varal: { inicio: 150, fim: 262, altura: 198 },                     // (E)
-  azulejo: { largura: 33, altura: 45 },                              // (E) só visual
-  piso: { lado: 60 },                                                // (E) só visual
+const PADRAO = { corredor: 120, fundo: 70, passagem: 80, portaLL: 118, portaLS: 110 };
+const AJUSTES = [
+  { id: 'corredor', nome: 'Corredor, de parede a parede', min: 100, max: 150, ajuda: 'Medida passada ao Gemini: 120 cm.' },
+  { id: 'fundo', nome: 'Fundo da bancada de pedra', min: 55, max: 80, ajuda: 'O Gemini sugeriu de 67 a 70 cm.' },
+  { id: 'passagem', nome: 'Largura da passagem da cozinha', min: 60, max: 110, ajuda: 'Estimada pelas fotos. Só muda o desenho.' },
+  { id: 'portaLL', nome: 'Lava-louças de piso com a porta aberta', min: 90, max: 130, ajuda: 'Do fundo da máquina até a ponta da porta deitada. Vem no manual.' },
+  { id: 'portaLS', nome: 'Lava e seca com a porta aberta', min: 90, max: 125, ajuda: 'Do fundo da máquina até a ponta da porta aberta a 90°.' },
+];
 
-  reforma: {
-    bancada: { inicio: 80, comprimento: 200, profundidade: 70, alturaLivre: 87.5, espessura: 3, rodabanca: 10 },
-    // Da passagem da cozinha para a janela:
-    nichoLavaSeca: 65, nichoLavaLoucas: 50, armarioCuba: 85,
-    lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: 110, centroPorta: 48, folgaFundo: 3 },
-    lavaLoucas: { largura: 44.8, altura: 84.5, profundidade: 60, portaAberta: 118, dobradica: 10, folgaFundo: 3 },
-    cuba: { largura: 30, profundidade: 35 },
-  },
-  hoje: {
-    forno: { inicio: 85, largura: 50, profundidade: 37, alturaSuporte: 75, alturaForno: 32 },  // (E)
-    maquina: { inicio: 140, largura: 56, profundidade: 61, altura: 96, folgaFundo: 3 },      // (E) Consul 9 kg
-    tanque: { inicio: 224, largura: 54, profundidade: 46, alturaBorda: 88 },                 // (E)
-    sapateira: { inicio: 248, fim: 280, z0: 82, z1: 118, altura: 48 },                       // (E)
-    lixeira: { inicio: 252, fim: 276, z0: 52, z1: 74, altura: 45 },                          // (E)
-  },
-  pessoa: { altura: 160, x: 230, z: 96 },
-};
-
-const L = M.comodo.comprimento, W = M.comodo.largura, H = M.comodo.peDireito;
-const B = M.reforma.bancada;
-const xLS0 = B.inicio, xLS1 = xLS0 + M.reforma.nichoLavaSeca;
-const xLL0 = xLS1, xLL1 = xLL0 + M.reforma.nichoLavaLoucas;
-const xAC0 = xLL1, xAC1 = xAC0 + M.reforma.armarioCuba;
-
-// ---------- Contas de folga ----------
-function calcularFolgas() {
-  const ls = M.reforma.lavaSeca, ll = M.reforma.lavaLoucas, maq = M.hoje.maquina;
-  const lsFrente = ls.folgaFundo + ls.profundidade - 5;   // frente do corpo (sem a porta)
-  const lsPorta = ls.portaAberta - (ls.profundidade - 5); // diâmetro da porta
-  const lsEspaco = W - lsFrente;
-  const lsSobra = lsEspaco - lsPorta;
-  const llFrente = ll.folgaFundo + ll.profundidade;
-  const llPorta = ll.portaAberta - ll.profundidade;
-  const llEspaco = W - llFrente;
-  const llSobra = llEspaco - llPorta;
-  const angulo = (espaco, porta) => espaco >= porta ? 90 : THREE.MathUtils.radToDeg(Math.asin(Math.max(0, espaco) / porta));
+function montarMedidas(a) {
+  const P = a.passagem, W = a.corredor, L = P + 200;
   return {
-    corredor: W - B.profundidade,
-    corredorHoje: W - (maq.folgaFundo + maq.profundidade),
-    lsFrente, lsPorta, lsSobra, lsAngulo: angulo(lsEspaco, lsPorta), lsPonta: ls.folgaFundo + ls.portaAberta,
-    llFrente, llPorta, llSobra, llAngulo: angulo(llEspaco, llPorta), llPonta: ll.folgaFundo + ll.portaAberta,
+    comodo: { comprimento: L, largura: W, peDireito: 250 },             // comprimento: passagem + 2,00 m de bancada
+    passagemCozinha: { inicio: 0, largura: P, altura: 210 },            // (E) na parede dos armários
+    portaPredio: { inicio: 6, largura: 72, altura: 210 },               // (E) na parede da porta, abre para dentro
+    janela: { inicio: 12, largura: Math.min(75, W - 30), altura: 110, peitoril: 100 }, // (E) início medido da parede da porta
+    armariosAereos: { inicio: P, fim: L, profundidade: 35, base: 178, portas: 8 }, // (E)
+    quadroLuz: { inicio: 112, largura: 30, base: 112, altura: 40 },     // (E)
+    interfone: { inicio: 90, largura: 12, base: 165, altura: 15 },      // (E)
+    interruptor: { inicio: 92, largura: 8, base: 104, altura: 12 },     // (E)
+    varal: { inicio: P + 70, fim: L - 18, altura: 198 },                // (E)
+    azulejo: { largura: 33, altura: 45 },                               // (E) só visual
+    piso: { lado: 60 },                                                 // (E) só visual
+    reforma: {
+      bancada: { inicio: P, comprimento: 200, profundidade: a.fundo, alturaLivre: 87.5, espessura: 3, rodabanca: 10 },
+      // Da passagem da cozinha para a janela:
+      nichoLavaSeca: 65, nichoLavaLoucas: 50, armarioCuba: 85,
+      lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: a.portaLS, centroPorta: 48, folgaFundo: 3 },
+      lavaLoucas: { largura: 44.8, altura: 84.5, profundidade: 60, portaAberta: a.portaLL, dobradica: 10, folgaFundo: 3 },
+      // Plano B: lava-louças de bancada de 8 serviços (Electrolux LS08E / Midea DWA08P2). Porta aberta (E).
+      lavaLoucasBancada: { largura: 55, altura: 59.5, profundidade: 50, portaAberta: 95, dobradica: 4, folgaFundo: 5 },
+      cuba: { largura: 30, profundidade: 35 },
+    },
+    hoje: {
+      forno: { inicio: P + 5, largura: 50, profundidade: 37, alturaSuporte: 75, alturaForno: 32 }, // (E)
+      maquina: { inicio: P + 60, largura: 56, profundidade: 61, altura: 96, folgaFundo: 3 },     // (E) Consul 9 kg
+      tanque: { inicio: L - 56, largura: 54, profundidade: 46, alturaBorda: 88 },                // (E)
+      sapateira: { inicio: L - 32, fim: L, z0: W - 38, z1: W - 2, altura: 48 },                  // (E)
+      lixeira: { inicio: L - 28, fim: L - 4, z0: 52, z1: 74, altura: 45 },                       // (E)
+    },
+    pessoa: { altura: 160, x: L - 50 },
   };
 }
-const F = calcularFolgas();
+
+// ---------- Contas de folga ----------
+function calcularFolgas(M) {
+  const W = M.comodo.largura, B = M.reforma.bancada;
+  const ls = M.reforma.lavaSeca, ll = M.reforma.lavaLoucas, lb = M.reforma.lavaLoucasBancada, maq = M.hoje.maquina;
+  const angulo = (espaco, porta) => espaco >= porta ? 90 : THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(espaco / porta, 0, 1)));
+  // Porta que abre para baixo (lava-louças): gira na base da frente.
+  const portaBaixo = ap => {
+    const frente = ap.folgaFundo + ap.profundidade, comp = ap.portaAberta - ap.profundidade, espaco = W - frente;
+    return { frente, comp, sobra: espaco - comp, angulo: angulo(espaco, comp), ponta: ap.folgaFundo + ap.portaAberta };
+  };
+  // Lava e seca: a porta redonda fica 5 cm à frente do corpo; o diâmetro sai da medida com a porta aberta.
+  const lsFrente = ls.folgaFundo + ls.profundidade - 5, lsPorta = ls.portaAberta - (ls.profundidade - 5), lsEspaco = W - lsFrente;
+  const frenteLS = ls.folgaFundo + ls.profundidade;
+  return {
+    corredorPiso: W - Math.max(B.profundidade, frenteLS, ll.folgaFundo + ll.profundidade),
+    corredorBancada: W - Math.max(B.profundidade, frenteLS),
+    corredorHoje: W - (maq.folgaFundo + maq.profundidade),
+    ls: { frente: lsFrente, comp: lsPorta, sobra: lsEspaco - lsPorta, angulo: angulo(lsEspaco, lsPorta), ponta: ls.folgaFundo + ls.portaAberta },
+    ll: portaBaixo(ll),
+    lb: portaBaixo(lb),
+  };
+}
 const situacao = sobra => sobra >= 15 ? 'ok' : sobra >= 0 ? 'justo' : 'limite';
 const fmt = n => Math.round(n).toLocaleString('pt-BR');
+
+// ---------- Ajustes guardados neste navegador ----------
+const CHAVE = 'area-servico-ajustes-v1';
+let ajustes = { ...PADRAO };
+try {
+  const salvo = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+  if (salvo) for (const a of AJUSTES) if (Number.isFinite(salvo[a.id])) ajustes[a.id] = THREE.MathUtils.clamp(salvo[a.id], a.min, a.max);
+} catch { /* sem armazenamento: usa o padrão */ }
+function salvarAjustes() {
+  try { localStorage.setItem(CHAVE, JSON.stringify(ajustes)); } catch { /* ignora */ }
+}
 
 // ---------- Renderizador ----------
 const S = v => v / 100; // cm → m
@@ -317,16 +366,13 @@ controles.maxDistance = 14;
 // ---------- Luz ----------
 mundo.add(new THREE.HemisphereLight(0xffffff, 0xcdc4b3, 2.1));
 const sol = new THREE.DirectionalLight(0xfff4e2, 2.2);
-sol.position.set(S(L + 150), S(330), S(W * 0.7));
-sol.target.position.set(S(L / 2), 0, S(W / 2));
 sol.castShadow = true;
 sol.shadow.mapSize.set(1024, 1024);
-Object.assign(sol.shadow.camera, { left: -2.4, right: 2.4, top: 2.4, bottom: -2.4, near: 0.5, far: 9 });
+Object.assign(sol.shadow.camera, { left: -2.6, right: 2.6, top: 2.6, bottom: -2.6, near: 0.5, far: 9 });
 sol.shadow.bias = -0.0004;
 sol.shadow.normalBias = 0.02;
 mundo.add(sol, sol.target);
 const preenchimento = new THREE.DirectionalLight(0xffffff, 0.7);
-preenchimento.position.set(S(L * 0.3), S(400), S(W * 3));
 mundo.add(preenchimento);
 
 // ---------- Texturas ----------
@@ -361,10 +407,12 @@ function texturaGranito() {
   return t;
 }
 
-// ---------- Materiais ----------
+// ---------- Materiais (criados uma vez, reaproveitados a cada montagem) ----------
 const padrao = (cor, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5, ...extra });
+const BASE = montarMedidas(PADRAO);
 const mat = {
-  azulejo: new THREE.MeshStandardMaterial({ map: texturaAzulejo(M.azulejo.largura, M.azulejo.altura, '#f6f6f3', '#d3d6d2'), roughness: 0.35, side: THREE.DoubleSide }),
+  azulejo: new THREE.MeshStandardMaterial({ map: texturaAzulejo(BASE.azulejo.largura, BASE.azulejo.altura, '#f6f6f3', '#d3d6d2'), roughness: 0.35, side: THREE.DoubleSide }),
+  piso: new THREE.MeshStandardMaterial({ map: texturaAzulejo(BASE.piso.lado, BASE.piso.lado, '#e5dfd2', '#c8c0af'), roughness: 0.55, side: THREE.DoubleSide }),
   teto: padrao(0xf7f7f4, { roughness: 0.95, side: THREE.DoubleSide }),
   liso: padrao(0xf1f1ee, { roughness: 0.6 }),
   madeira: padrao(0x8f4520, { roughness: 0.55 }),
@@ -392,6 +440,8 @@ const mat = {
   pessoa: new THREE.MeshStandardMaterial({ color: 0x5c7a86, roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }),
   cozinha: padrao(0xd8d1c1, { roughness: 0.9 }),
   cota: new THREE.MeshBasicMaterial({ color: 0x1d6470 }),
+  setor: new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.13, depthWrite: false }),
+  arco: new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.6, depthWrite: false }),
 };
 
 // ---------- Ajudantes ----------
@@ -403,20 +453,20 @@ function caixa(x0, x1, y0, y1, z0, z1, material, sombra = true) {
   m.castShadow = sombra; m.receiveShadow = true;
   return m;
 }
-// Parede plana com vãos (porta, janela, passagem). UV em metros para o azulejo ficar no tamanho certo.
-function parede({ origem, dirU, comprimento, altura, vaos = [], material }) {
+// Superfície plana com vãos (porta, janela, passagem), feita de retângulos.
+// UV em metros, para o azulejo ficar no tamanho certo em qualquer medida.
+function superficie({ ponto, comprimento, altura, vaos = [], material }) {
   const us = new Set([0, comprimento]), vs = new Set([0, altura]);
   for (const o of vaos) { us.add(o.u0); us.add(o.u1); vs.add(o.v0); vs.add(o.v1); }
   const U = [...us].sort((a, b) => a - b), V = [...vs].sort((a, b) => a - b);
   const pos = [], uv = [], idx = [];
-  const ponto = (u, v) => [S(origem[0] + dirU[0] * u), S(v), S(origem[2] + dirU[2] * u)];
   for (let i = 0; i < U.length - 1; i++) {
     for (let j = 0; j < V.length - 1; j++) {
       const uc = (U[i] + U[i + 1]) / 2, vc = (V[j] + V[j + 1]) / 2;
       if (vaos.some(o => uc > o.u0 && uc < o.u1 && vc > o.v0 && vc < o.v1)) continue;
       const base = pos.length / 3;
       for (const [u, v] of [[U[i], V[j]], [U[i + 1], V[j]], [U[i + 1], V[j + 1]], [U[i], V[j + 1]]]) {
-        pos.push(...ponto(u, v)); uv.push(S(u), S(v));
+        pos.push(...ponto(u, v).map(S)); uv.push(S(u), S(v));
       }
       idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
@@ -430,7 +480,10 @@ function parede({ origem, dirU, comprimento, altura, vaos = [], material }) {
   m.receiveShadow = true;
   return m;
 }
-const rotulos = [];
+const paredeX = (z, comprimento, altura, vaos) => superficie({ ponto: (u, v) => [u, v, z], comprimento, altura, vaos, material: mat.azulejo });
+const paredeZ = (x, comprimento, altura, vaos) => superficie({ ponto: (u, v) => [x, v, u], comprimento, altura, vaos, material: mat.azulejo });
+
+let rotulos = [];
 function rotulo(grupo, texto, x, y, z, classe = '', quando = null) {
   const el = document.createElement('div');
   el.className = 'rotulo ' + classe;
@@ -449,214 +502,275 @@ function cotaChao(grupo, x, z0, z1, texto) {
   grupo.add(caixa(x - 5, x + 5, 0.2, 0.6, z1 - 1, z1, mat.cota, false));
   rotulo(grupo, texto, x, 4, (z0 + z1) / 2, 'medida');
 }
+// Lava-louças com porta que abre para baixo. Devolve o pivô da porta.
+function lavaLoucas(grupo, ap, xCentro, yBase, folgas) {
+  const x0 = xCentro - ap.largura / 2, x1 = xCentro + ap.largura / 2, frente = folgas.frente;
+  grupo.add(caixa(x0, x1, yBase + ap.dobradica, yBase + ap.altura, ap.folgaFundo, frente - 3, mat.inox));
+  grupo.add(caixa(x0 + 1, x1 - 1, yBase, yBase + ap.dobradica, ap.folgaFundo + 2, frente - 5, mat.escuro, false));
+  grupo.add(caixa(x0, x1, yBase + ap.dobradica + folgas.comp, yBase + ap.altura, frente - 3, frente, mat.escuro));
+  grupo.add(caixa(x0 + 4, x0 + 16, yBase + ap.altura - 9, yBase + ap.altura - 5, frente, frente + 0.3, mat.cinzaClaro, false));
+  const pivo = new THREE.Group();
+  pivo.position.set(S(xCentro), S(yBase + ap.dobradica), S(frente));
+  grupo.add(pivo);
+  pivo.add(caixa(-ap.largura / 2, ap.largura / 2, 0, folgas.comp, -3, 0, mat.inoxPorta));
+  pivo.add(caixa(-ap.largura / 2 + 8, ap.largura / 2 - 8, folgas.comp - 7, folgas.comp - 4, 0, 1.6, mat.metal));
+  return pivo;
+}
 
-// ---------- Paredes (cada uma some quando a câmera está do lado de fora dela) ----------
-const paredes = [];
+// ---------- Estado da montagem atual ----------
+let M, F, L, W, H, B, P;
+let conteudo = null, paredes = [];
+let gReforma, gHoje, gPiso, gBancadaLL, aereos, pessoa, pivoLS, pivoLL, pivoLB;
+let cenario = 'reforma', variante = 'piso', progressoPortas = 0, alvoPortas = 0, mostrarNomes = true;
+let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
+
 function grupoParede(ponto, normal) {
   const g = new THREE.Group();
-  mundo.add(g);
+  conteudo.add(g);
   paredes.push({ grupo: g, ponto: ponto.multiply(ESPELHO), normal: normal.multiply(ESPELHO) });
   return g;
 }
-const gArmarios = grupoParede(v3(0, 0, 0), v3(0, 0, 1));
-const gPorta = grupoParede(v3(0, 0, S(W)), v3(0, 0, -1));
-const gJanela = grupoParede(v3(S(L), 0, 0), v3(-1, 0, 0));
-const gCega = grupoParede(v3(0, 0, 0), v3(1, 0, 0));
-const gTeto = grupoParede(v3(0, S(H), 0), v3(0, -1, 0));
 
-const P = M.passagemCozinha, Pp = M.portaPredio, J = M.janela;
-gArmarios.add(parede({ origem: [0, 0, 0], dirU: [1, 0, 0], comprimento: L, altura: H,
-  vaos: [{ u0: P.inicio, u1: P.inicio + P.largura, v0: 0, v1: P.altura }], material: mat.azulejo }));
-gPorta.add(parede({ origem: [0, 0, W], dirU: [1, 0, 0], comprimento: L, altura: H,
-  vaos: [{ u0: Pp.inicio, u1: Pp.inicio + Pp.largura, v0: 0, v1: Pp.altura }], material: mat.azulejo }));
-const jz1 = W - J.inicio, jz0 = jz1 - J.largura, jy0 = J.peitoril, jy1 = J.peitoril + J.altura;
-gJanela.add(parede({ origem: [L, 0, 0], dirU: [0, 0, 1], comprimento: W, altura: H,
-  vaos: [{ u0: jz0, u1: jz1, v0: jy0, v1: jy1 }], material: mat.azulejo }));
-gCega.add(parede({ origem: [0, 0, 0], dirU: [0, 0, 1], comprimento: W, altura: H, material: mat.azulejo }));
-const teto = new THREE.Mesh(new THREE.PlaneGeometry(S(L), S(W)), mat.teto);
-teto.rotation.x = Math.PI / 2;
-teto.position.set(S(L / 2), S(H), S(W / 2));
-gTeto.add(teto);
-
-// Piso
-const texPiso = texturaAzulejo(M.piso.lado, M.piso.lado, '#e5dfd2', '#c8c0af');
-texPiso.repeat.set(L / M.piso.lado, W / M.piso.lado);
-const piso = new THREE.Mesh(new THREE.PlaneGeometry(S(L), S(W)), new THREE.MeshStandardMaterial({ map: texPiso, roughness: 0.55 }));
-piso.rotation.x = -Math.PI / 2;
-piso.position.set(S(L / 2), 0, S(W / 2));
-piso.receiveShadow = true;
-mundo.add(piso);
-
-// Passagem para a cozinha (espessura da parede e um pedaço do piso da cozinha)
-gArmarios.add(caixa(P.inicio, P.inicio + P.largura, P.altura, P.altura + 1, -12, 0, mat.liso, false));
-gArmarios.add(caixa(P.inicio + P.largura, P.inicio + P.largura + 1, 0, P.altura + 1, -12, 0, mat.liso, false));
-const pisoCozinha = new THREE.Mesh(new THREE.PlaneGeometry(S(P.largura + 40), S(60)), mat.cozinha);
-pisoCozinha.rotation.x = -Math.PI / 2;
-pisoCozinha.position.set(S(P.inicio + P.largura / 2), -0.002, S(-30));
-pisoCozinha.receiveShadow = true;
-mundo.add(pisoCozinha);
-rotulo(mundo, 'Passagem para a cozinha', P.inicio + P.largura / 2, 6, 2, 'sutil');
-
-// Porta do corredor do prédio (abre para dentro, dobradiça do lado da parede cega)
-gPorta.add(caixa(Pp.inicio - 5, Pp.inicio, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
-gPorta.add(caixa(Pp.inicio + Pp.largura, Pp.inicio + Pp.largura + 5, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
-gPorta.add(caixa(Pp.inicio - 5, Pp.inicio + Pp.largura + 5, Pp.altura, Pp.altura + 5, W - 2, W + 1, mat.madeira));
-gPorta.add(caixa(Pp.inicio, Pp.inicio + Pp.largura, 0.5, Pp.altura, W - 1, W + 3, mat.folhaPorta));
-gPorta.add(caixa(Pp.inicio + Pp.largura - 11, Pp.inicio + Pp.largura - 3, 99, 102, W - 4, W - 1, mat.metal));
-gPorta.add(caixa(Pp.inicio + Pp.largura - 7, Pp.inicio + Pp.largura - 4, 140, 144, W - 2.5, W - 1, mat.metal));
-rotulo(gPorta, 'Porta do corredor do prédio', Pp.inicio + Pp.largura / 2, Pp.altura + 14, W - 4);
-const setor = new THREE.Mesh(new THREE.CircleGeometry(S(Pp.largura), 40, 0, Math.PI / 2),
-  new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.13, depthWrite: false }));
-const arco = new THREE.Mesh(new THREE.RingGeometry(S(Pp.largura - 1), S(Pp.largura), 40, 1, 0, Math.PI / 2),
-  new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.6, depthWrite: false }));
-for (const m of [setor, arco]) {
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(S(Pp.inicio), 0.004, S(W));
-  mundo.add(m);
+function descartar() {
+  if (!conteudo) return;
+  for (const r of rotulos) r.element.remove();
+  conteudo.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  mundo.remove(conteudo);
+  rotulos = [];
+  paredes = [];
 }
 
-// Interfone, interruptor, quadro de luz, varal sanfonado
-const Q = M.quadroLuz, I = M.interfone, Ir = M.interruptor, Va = M.varal;
-gPorta.add(caixa(Q.inicio, Q.inicio + Q.largura, Q.base, Q.base + Q.altura, W - 1.5, W, mat.quadro));
-gPorta.add(caixa(I.inicio, I.inicio + I.largura, I.base, I.base + I.altura, W - 4, W, mat.armario));
-gPorta.add(caixa(Ir.inicio, Ir.inicio + Ir.largura, Ir.base, Ir.base + Ir.altura, W - 1, W, mat.armario));
-gPorta.add(caixa(Va.inicio, Va.fim, Va.altura - 2, Va.altura + 2, W - 9, W - 5, mat.aluminio));
-gPorta.add(caixa(Va.inicio, Va.inicio + 3, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
-gPorta.add(caixa(Va.fim - 3, Va.fim, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
+function construir() {
+  descartar();
+  M = montarMedidas(ajustes);
+  F = calcularFolgas(M);
+  L = M.comodo.comprimento; W = M.comodo.largura; H = M.comodo.peDireito;
+  B = M.reforma.bancada; P = M.passagemCozinha;
+  const Pp = M.portaPredio, J = M.janela, A = M.armariosAereos;
+  conteudo = new THREE.Group();
+  mundo.add(conteudo);
 
-// Janela de correr
-gJanela.add(caixa(L - 6, L, jy0, jy0 + 4, jz0, jz1, mat.aluminio));
-gJanela.add(caixa(L - 6, L, jy1 - 4, jy1, jz0, jz1, mat.aluminio));
-gJanela.add(caixa(L - 6, L, jy0, jy1, jz0, jz0 + 4, mat.aluminio));
-gJanela.add(caixa(L - 6, L, jy0, jy1, jz1 - 4, jz1, mat.aluminio));
-gJanela.add(caixa(L - 5, L - 2, jy0, jy1, (jz0 + jz1) / 2 - 2, (jz0 + jz1) / 2 + 2, mat.aluminio));
-gJanela.add(caixa(L - 8, L, jy0 - 3, jy0, jz0 - 3, jz1 + 3, mat.peitoril));
-const vidro = new THREE.Mesh(new THREE.PlaneGeometry(S(J.largura - 8), S(J.altura - 8)), mat.vidroJanela);
-vidro.rotation.y = Math.PI / 2;
-vidro.position.set(S(L - 3), S((jy0 + jy1) / 2), S((jz0 + jz1) / 2));
-gJanela.add(vidro);
-rotulo(gJanela, 'Janela', L - 4, jy1 + 10, (jz0 + jz1) / 2, 'sutil');
+  sol.position.set(S(L + 150), S(330), S(W * 0.7));
+  sol.target.position.set(S(L / 2), 0, S(W / 2));
+  preenchimento.position.set(S(L * 0.3), S(400), S(W * 3));
 
-// Armários aéreos (já existem; ficam nos dois cenários)
-const A = M.armariosAereos;
-const aereos = new THREE.Group();
-gArmarios.add(aereos);
-aereos.add(caixa(A.inicio, A.fim, A.base, H, 0, A.profundidade, mat.armario));
-const lPortaArm = (A.fim - A.inicio) / A.portas;
-for (let i = 1; i < A.portas; i++) {
-  const x = A.inicio + i * lPortaArm;
-  aereos.add(caixa(x - 0.25, x + 0.25, A.base + 1, H - 1, A.profundidade, A.profundidade + 0.3, mat.friso, false));
+  // Paredes (cada uma some quando a câmera está do lado de fora dela)
+  const gArmarios = grupoParede(v3(0, 0, 0), v3(0, 0, 1));
+  const gPorta = grupoParede(v3(0, 0, S(W)), v3(0, 0, -1));
+  const gJanela = grupoParede(v3(S(L), 0, 0), v3(-1, 0, 0));
+  const gCega = grupoParede(v3(0, 0, 0), v3(1, 0, 0));
+  const gTeto = grupoParede(v3(0, S(H), 0), v3(0, -1, 0));
+  gArmarios.add(paredeX(0, L, H, [{ u0: P.inicio, u1: P.inicio + P.largura, v0: 0, v1: P.altura }]));
+  gPorta.add(paredeX(W, L, H, [{ u0: Pp.inicio, u1: Pp.inicio + Pp.largura, v0: 0, v1: Pp.altura }]));
+  const jz1 = W - J.inicio, jz0 = jz1 - J.largura, jy0 = J.peitoril, jy1 = J.peitoril + J.altura;
+  gJanela.add(paredeZ(L, W, H, [{ u0: jz0, u1: jz1, v0: jy0, v1: jy1 }]));
+  gCega.add(paredeZ(0, W, H, []));
+  const teto = new THREE.Mesh(new THREE.PlaneGeometry(S(L), S(W)), mat.teto);
+  teto.rotation.x = Math.PI / 2;
+  teto.position.set(S(L / 2), S(H), S(W / 2));
+  gTeto.add(teto);
+
+  // Piso e um pedaço do piso da cozinha
+  conteudo.add(superficie({ ponto: (u, v) => [u, 0, v], comprimento: L, altura: W, material: mat.piso }));
+  const pisoCozinha = new THREE.Mesh(new THREE.PlaneGeometry(S(P.largura + 40), S(60)), mat.cozinha);
+  pisoCozinha.rotation.x = -Math.PI / 2;
+  pisoCozinha.position.set(S(P.inicio + P.largura / 2), -0.002, S(-30));
+  pisoCozinha.receiveShadow = true;
+  conteudo.add(pisoCozinha);
+  gArmarios.add(caixa(P.inicio, P.inicio + P.largura, P.altura, P.altura + 1, -12, 0, mat.liso, false));
+  gArmarios.add(caixa(P.inicio + P.largura, P.inicio + P.largura + 1, 0, P.altura + 1, -12, 0, mat.liso, false));
+  rotulo(conteudo, 'Passagem para a cozinha', P.inicio + P.largura / 2, 6, 2, 'sutil');
+
+  // Porta do corredor do prédio (abre para dentro, dobradiça do lado da parede cega)
+  gPorta.add(caixa(Pp.inicio - 5, Pp.inicio, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+  gPorta.add(caixa(Pp.inicio + Pp.largura, Pp.inicio + Pp.largura + 5, 0, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+  gPorta.add(caixa(Pp.inicio - 5, Pp.inicio + Pp.largura + 5, Pp.altura, Pp.altura + 5, W - 2, W + 1, mat.madeira));
+  gPorta.add(caixa(Pp.inicio, Pp.inicio + Pp.largura, 0.5, Pp.altura, W - 1, W + 3, mat.folhaPorta));
+  gPorta.add(caixa(Pp.inicio + Pp.largura - 11, Pp.inicio + Pp.largura - 3, 99, 102, W - 4, W - 1, mat.metal));
+  gPorta.add(caixa(Pp.inicio + Pp.largura - 7, Pp.inicio + Pp.largura - 4, 140, 144, W - 2.5, W - 1, mat.metal));
+  rotulo(gPorta, 'Porta do corredor do prédio', Pp.inicio + Pp.largura / 2, Pp.altura + 14, W - 4);
+  const setor = new THREE.Mesh(new THREE.CircleGeometry(S(Pp.largura), 40, 0, Math.PI / 2), mat.setor);
+  const arco = new THREE.Mesh(new THREE.RingGeometry(S(Pp.largura - 1), S(Pp.largura), 40, 1, 0, Math.PI / 2), mat.arco);
+  for (const m of [setor, arco]) {
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(S(Pp.inicio), 0.004, S(W));
+    conteudo.add(m);
+  }
+
+  // Interfone, interruptor, quadro de luz, varal sanfonado
+  const Q = M.quadroLuz, I = M.interfone, Ir = M.interruptor, Va = M.varal;
+  gPorta.add(caixa(Q.inicio, Q.inicio + Q.largura, Q.base, Q.base + Q.altura, W - 1.5, W, mat.quadro));
+  gPorta.add(caixa(I.inicio, I.inicio + I.largura, I.base, I.base + I.altura, W - 4, W, mat.armario));
+  gPorta.add(caixa(Ir.inicio, Ir.inicio + Ir.largura, Ir.base, Ir.base + Ir.altura, W - 1, W, mat.armario));
+  gPorta.add(caixa(Va.inicio, Va.fim, Va.altura - 2, Va.altura + 2, W - 9, W - 5, mat.aluminio));
+  gPorta.add(caixa(Va.inicio, Va.inicio + 3, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
+  gPorta.add(caixa(Va.fim - 3, Va.fim, Va.altura - 6, Va.altura + 6, W - 9, W, mat.aluminio));
+
+  // Janela de correr
+  gJanela.add(caixa(L - 6, L, jy0, jy0 + 4, jz0, jz1, mat.aluminio));
+  gJanela.add(caixa(L - 6, L, jy1 - 4, jy1, jz0, jz1, mat.aluminio));
+  gJanela.add(caixa(L - 6, L, jy0, jy1, jz0, jz0 + 4, mat.aluminio));
+  gJanela.add(caixa(L - 6, L, jy0, jy1, jz1 - 4, jz1, mat.aluminio));
+  gJanela.add(caixa(L - 5, L - 2, jy0, jy1, (jz0 + jz1) / 2 - 2, (jz0 + jz1) / 2 + 2, mat.aluminio));
+  gJanela.add(caixa(L - 8, L, jy0 - 3, jy0, jz0 - 3, jz1 + 3, mat.peitoril));
+  const vidro = new THREE.Mesh(new THREE.PlaneGeometry(S(J.largura - 8), S(J.altura - 8)), mat.vidroJanela);
+  vidro.rotation.y = Math.PI / 2;
+  vidro.position.set(S(L - 3), S((jy0 + jy1) / 2), S((jz0 + jz1) / 2));
+  gJanela.add(vidro);
+  rotulo(gJanela, 'Janela', L - 4, jy1 + 10, (jz0 + jz1) / 2, 'sutil');
+
+  // Armários aéreos (já existem; ficam nos dois cenários)
+  aereos = new THREE.Group();
+  gArmarios.add(aereos);
+  aereos.add(caixa(A.inicio, A.fim, A.base, H, 0, A.profundidade, mat.armario));
+  const lPortaArm = (A.fim - A.inicio) / A.portas;
+  for (let i = 1; i < A.portas; i++) {
+    const x = A.inicio + i * lPortaArm;
+    aereos.add(caixa(x - 0.25, x + 0.25, A.base + 1, H - 1, A.profundidade, A.profundidade + 0.3, mat.friso, false));
+  }
+  for (let i = 1; i < A.portas; i += 2) {
+    const x = A.inicio + i * lPortaArm;
+    for (const dx of [-3.5, 3.5]) aereos.add(caixa(x + dx - 0.6, x + dx + 0.6, A.base + 4, A.base + 18, A.profundidade + 0.5, A.profundidade + 2.2, mat.metal));
+  }
+
+  // ---------- Cenário: com a reforma ----------
+  gReforma = new THREE.Group();
+  conteudo.add(gReforma);
+  const xLS0 = B.inicio, xLS1 = xLS0 + M.reforma.nichoLavaSeca;
+  const xLL0 = xLS1, xLL1 = xLL0 + M.reforma.nichoLavaLoucas;
+  const xAC0 = xLL1, xAC1 = xAC0 + M.reforma.armarioCuba;
+  const yPedra = B.alturaLivre, yTopo = B.alturaLivre + B.espessura;
+  gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yPedra, yTopo, 0, B.profundidade, mat.pedra));
+  gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yTopo, yTopo + B.rodabanca, 0, 2, mat.pedra));
+
+  // Armário com a cuba
+  const meioAC = (xAC0 + xAC1) / 2;
+  gReforma.add(caixa(xAC0 + 0.5, xAC1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
+  gReforma.add(caixa(xAC0 + 1.5, xAC1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
+  gReforma.add(caixa(xAC0 + 0.5, meioAC - 0.25, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+  gReforma.add(caixa(meioAC + 0.25, xAC1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+  for (const dx of [-4, 4]) gReforma.add(caixa(meioAC + dx - 0.6, meioAC + dx + 0.6, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+  const C = M.reforma.cuba, zCuba = 12 + C.profundidade / 2;
+  gReforma.add(caixa(meioAC - C.largura / 2, meioAC + C.largura / 2, yTopo - 0.2, yTopo + 0.15, zCuba - C.profundidade / 2, zCuba + C.profundidade / 2, mat.inox, false));
+  gReforma.add(caixa(meioAC - C.largura / 2 + 2.5, meioAC + C.largura / 2 - 2.5, yTopo + 0.15, yTopo + 0.25, zCuba - C.profundidade / 2 + 2.5, zCuba + C.profundidade / 2 - 2.5, mat.escuro, false));
+  const tubo = new THREE.Mesh(new THREE.CylinderGeometry(S(1.3), S(1.7), S(28), 16), mat.metal);
+  tubo.position.set(S(meioAC), S(yTopo + 14), S(6));
+  tubo.castShadow = true;
+  gReforma.add(tubo);
+  gReforma.add(caixa(meioAC - 1.1, meioAC + 1.1, yTopo + 25, yTopo + 28, 6, 24, mat.metal));
+  rotulo(gReforma, 'Armário com cuba · 85 cm', meioAC, yTopo + 14, B.profundidade - 6);
+
+  // Lava e seca (porta redonda com dobradiça à esquerda de quem olha)
+  const LS = M.reforma.lavaSeca;
+  const lsx0 = (xLS0 + xLS1) / 2 - LS.largura / 2, lsx1 = lsx0 + LS.largura;
+  gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.ls.frente, mat.branco));
+  gReforma.add(caixa(lsx0 + 3, lsx0 + 20, LS.altura - 11, LS.altura - 3, F.ls.frente, F.ls.frente + 0.6, mat.cinzaClaro));
+  gReforma.add(caixa(lsx0 + 28, lsx1 - 4, LS.altura - 10, LS.altura - 4, F.ls.frente, F.ls.frente + 0.4, mat.escuro));
+  const rPorta = Math.min(F.ls.comp / 2, LS.largura / 2 - 3);
+  pivoLS = new THREE.Group();
+  pivoLS.position.set(S((lsx0 + lsx1) / 2 + rPorta), S(LS.centroPorta), S(F.ls.frente));
+  gReforma.add(pivoLS);
+  const aro = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta), S(rPorta), S(5), 48), mat.escuro);
+  aro.rotation.x = Math.PI / 2;
+  aro.position.set(S(-rPorta), 0, S(2.5));
+  aro.castShadow = true;
+  const visor = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta * 0.68), S(rPorta * 0.68), S(5.4), 40), mat.vidro);
+  visor.rotation.x = Math.PI / 2;
+  visor.position.copy(aro.position);
+  pivoLS.add(aro, visor);
+  rotulo(gReforma, 'Lava e seca · 60 cm', (xLS0 + xLS1) / 2, yTopo + 14, B.profundidade - 6);
+
+  const cenarioPiso = () => cenario === 'reforma' && variante === 'piso';
+  const cenarioBancada = () => cenario === 'reforma' && variante === 'bancada';
+  const abertas = () => progressoPortas > 0.95;
+  rotulo(gReforma, F.ls.sobra >= 0 ? `sobram ≈ ${fmt(F.ls.sobra)} cm` : 'encosta na parede',
+    (lsx0 + lsx1) / 2 - 14, 30, Math.min(W - 4, F.ls.ponta + 2), situacao(F.ls.sobra), abertas);
+
+  // Plano A: lava-louças de piso de 10 serviços no nicho do meio
+  gPiso = new THREE.Group();
+  gReforma.add(gPiso);
+  const LL = M.reforma.lavaLoucas;
+  pivoLL = lavaLoucas(gPiso, LL, (xLL0 + xLL1) / 2, 0, F.ll);
+  rotulo(gPiso, 'Lava-louças · 45 cm', (xLL0 + xLL1) / 2, yTopo + 30, B.profundidade - 6);
+  rotulo(gPiso, F.ll.sobra >= 0 ? `sobram ≈ ${fmt(F.ll.sobra)} cm` : 'encosta na parede',
+    (xLL0 + xLL1) / 2, 22, W - 6, situacao(F.ll.sobra), () => cenarioPiso() && abertas());
+  cotaChao(gPiso, xAC0 + 10, W - F.corredorPiso, W, `≈ ${fmt(F.corredorPiso)} cm livres`);
+
+  // Plano B: lava-louças de bancada de 8 serviços em cima da pedra; o nicho vira armário
+  gBancadaLL = new THREE.Group();
+  gReforma.add(gBancadaLL);
+  const LB = M.reforma.lavaLoucasBancada, meioLL = (xLL0 + xLL1) / 2;
+  gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
+  gBancadaLL.add(caixa(xLL0 + 1.5, xLL1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
+  gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+  gBancadaLL.add(caixa(xLL1 - 6.6, xLL1 - 5.4, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+  pivoLB = lavaLoucas(gBancadaLL, LB, meioLL, yTopo, F.lb);
+  rotulo(gBancadaLL, 'Lava-louças de bancada · 55 cm', meioLL, yTopo + LB.altura + 12, LB.folgaFundo + LB.profundidade / 2);
+  rotulo(gBancadaLL, 'Armário · 50 cm', meioLL, 45, B.profundidade);
+  rotulo(gBancadaLL, F.lb.sobra >= 0 ? `sobram ≈ ${fmt(F.lb.sobra)} cm` : 'encosta na parede',
+    meioLL, yTopo + 14, Math.min(W - 4, F.lb.ponta + 2), situacao(F.lb.sobra), () => cenarioBancada() && abertas());
+  cotaChao(gBancadaLL, xAC0 + 10, W - F.corredorBancada, W, `≈ ${fmt(F.corredorBancada)} cm livres`);
+
+  // ---------- Cenário: hoje ----------
+  gHoje = new THREE.Group();
+  conteudo.add(gHoje);
+  const Fo = M.hoje.forno, Ma = M.hoje.maquina, Ta = M.hoje.tanque, Sa = M.hoje.sapateira, Lx = M.hoje.lixeira;
+  for (const x of [Fo.inicio + 1, Fo.inicio + Fo.largura - 1]) {
+    for (const z of [4, 3 + Fo.profundidade - 1]) gHoje.add(caixa(x - 0.6, x + 0.6, 0, Fo.alturaSuporte, z - 0.6, z + 0.6, mat.arame));
+  }
+  for (const y of [3, 38]) gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, y, y + 1, 3, 3 + Fo.profundidade, mat.arame));
+  gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, Fo.alturaSuporte, Fo.alturaSuporte + Fo.alturaForno, 3, 3 + Fo.profundidade, mat.branco));
+  gHoje.add(caixa(Fo.inicio + 2, Fo.inicio + Fo.largura - 9, Fo.alturaSuporte + 3, Fo.alturaSuporte + Fo.alturaForno - 3, 3 + Fo.profundidade, 3.6 + Fo.profundidade, mat.escuro));
+  rotulo(gHoje, 'Forno', Fo.inicio + Fo.largura / 2, Fo.alturaSuporte + Fo.alturaForno + 10, 3 + Fo.profundidade / 2);
+
+  const zMaq0 = Ma.folgaFundo, zMaq1 = Ma.folgaFundo + Ma.profundidade;
+  gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, 0.5, Ma.altura - 8, zMaq0, zMaq1, mat.branco));
+  gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, Ma.altura - 8, Ma.altura, zMaq0, zMaq0 + 12, mat.branco));
+  gHoje.add(caixa(Ma.inicio + 3, Ma.inicio + Ma.largura - 3, Ma.altura - 8, Ma.altura - 6, zMaq0 + 14, zMaq1 - 3, mat.escuro));
+  gHoje.add(caixa(Ma.inicio + 7, Ma.inicio + Ma.largura - 7, Ma.altura - 6, Ma.altura - 5.5, zMaq0 + 18, zMaq1 - 7, mat.vidro, false));
+  rotulo(gHoje, 'Máquina atual', Ma.inicio + Ma.largura / 2, Ma.altura + 10, (zMaq0 + zMaq1) / 2);
+
+  gHoje.add(caixa(Ta.inicio, Ta.inicio + Ta.largura, Ta.alturaBorda - 26, Ta.alturaBorda, 0, Ta.profundidade, mat.tanque));
+  gHoje.add(caixa(Ta.inicio + 4, Ta.inicio + Ta.largura - 4, Ta.alturaBorda, Ta.alturaBorda + 0.3, 4, Ta.profundidade - 4, mat.tanqueFundo, false));
+  gHoje.add(caixa(Ta.inicio + Ta.largura / 2 - 1, Ta.inicio + Ta.largura / 2 + 1, Ta.alturaBorda + 22, Ta.alturaBorda + 25, 0, 10, mat.metal));
+  rotulo(gHoje, 'Tanque', Ta.inicio + Ta.largura / 2, Ta.alturaBorda + 34, Ta.profundidade / 2);
+
+  gHoje.add(caixa(Sa.inicio, Sa.fim, 0, Sa.altura, Sa.z0, Sa.z1, mat.sapateira));
+  gHoje.add(caixa(Lx.inicio, Lx.fim, 0, Lx.altura, Lx.z0, Lx.z1, mat.lixeira));
+  cotaChao(gHoje, Ma.inicio + Ma.largura / 2, zMaq1, W, `≈ ${fmt(F.corredorHoje)} cm livres`);
+
+  // ---------- Pessoa de 1,60 m para dar escala ----------
+  pessoa = new THREE.Group();
+  const raio = 16, cabeca = 12, alturaCorpo = M.pessoa.altura - 2 * cabeca - 4;
+  const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(S(raio), S(alturaCorpo - 2 * raio), 6, 16), mat.pessoa);
+  tronco.scale.z = 0.6;
+  tronco.position.y = S(alturaCorpo / 2);
+  const bola = new THREE.Mesh(new THREE.SphereGeometry(S(cabeca), 20, 14), mat.pessoa);
+  bola.position.y = S(M.pessoa.altura - cabeca);
+  pessoa.add(tronco, bola);
+  pessoa.position.set(S(M.pessoa.x), 0, S(W - F.corredorPiso / 2));
+  conteudo.add(pessoa);
+  rotulo(pessoa, 'pessoa de 1,60 m', 0, M.pessoa.altura + 10, 0, 'sutil');
+
+  aplicarEstado();
 }
-for (let i = 1; i < A.portas; i += 2) {
-  const x = A.inicio + i * lPortaArm;
-  for (const dx of [-3.5, 3.5]) aereos.add(caixa(x + dx - 0.6, x + dx + 0.6, A.base + 4, A.base + 18, A.profundidade + 0.5, A.profundidade + 2.2, mat.metal));
+
+// Visibilidade e posição das portas conforme o cenário e a vista escolhidos.
+function aplicarEstado() {
+  gReforma.visible = cenario === 'reforma';
+  gHoje.visible = cenario === 'hoje';
+  gPiso.visible = variante === 'piso';
+  gBancadaLL.visible = variante === 'bancada';
+  pessoa.visible = vistaAtual !== 'frente' && vistaAtual !== 'janela'; // nessas vistas a pessoa taparia a bancada
+  aereos.visible = vistaAtual !== 'cima';
+  aplicarPortas(suave(progressoPortas));
 }
-
-// ---------- Cenário: com a reforma ----------
-const gReforma = new THREE.Group();
-mundo.add(gReforma);
-const yPedra = B.alturaLivre, yTopo = B.alturaLivre + B.espessura;
-gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yPedra, yTopo, 0, B.profundidade, mat.pedra));
-gReforma.add(caixa(B.inicio, B.inicio + B.comprimento, yTopo, yTopo + B.rodabanca, 0, 2, mat.pedra));
-
-// Armário com a cuba
-const meioAC = (xAC0 + xAC1) / 2;
-gReforma.add(caixa(xAC0 + 0.5, xAC1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
-gReforma.add(caixa(xAC0 + 1.5, xAC1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
-gReforma.add(caixa(xAC0 + 0.5, meioAC - 0.25, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
-gReforma.add(caixa(meioAC + 0.25, xAC1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
-for (const dx of [-4, 4]) gReforma.add(caixa(meioAC + dx - 0.6, meioAC + dx + 0.6, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
-const C = M.reforma.cuba, zCuba = 12 + C.profundidade / 2;
-gReforma.add(caixa(meioAC - C.largura / 2, meioAC + C.largura / 2, yTopo - 0.2, yTopo + 0.15, zCuba - C.profundidade / 2, zCuba + C.profundidade / 2, mat.inox, false));
-gReforma.add(caixa(meioAC - C.largura / 2 + 2.5, meioAC + C.largura / 2 - 2.5, yTopo + 0.15, yTopo + 0.25, zCuba - C.profundidade / 2 + 2.5, zCuba + C.profundidade / 2 - 2.5, mat.escuro, false));
-const tubo = new THREE.Mesh(new THREE.CylinderGeometry(S(1.3), S(1.7), S(28), 16), mat.metal);
-tubo.position.set(S(meioAC), S(yTopo + 14), S(6));
-tubo.castShadow = true;
-gReforma.add(tubo);
-gReforma.add(caixa(meioAC - 1.1, meioAC + 1.1, yTopo + 25, yTopo + 28, 6, 24, mat.metal));
-rotulo(gReforma, 'Armário com cuba · 85 cm', meioAC, yTopo + 14, B.profundidade - 6);
-
-// Lava e seca (porta redonda com dobradiça à esquerda de quem olha)
-const LS = M.reforma.lavaSeca;
-const lsx0 = (xLS0 + xLS1) / 2 - LS.largura / 2, lsx1 = lsx0 + LS.largura;
-gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.lsFrente, mat.branco));
-gReforma.add(caixa(lsx0 + 3, lsx0 + 20, LS.altura - 11, LS.altura - 3, F.lsFrente, F.lsFrente + 0.6, mat.cinzaClaro));
-gReforma.add(caixa(lsx0 + 28, lsx1 - 4, LS.altura - 10, LS.altura - 4, F.lsFrente, F.lsFrente + 0.4, mat.escuro));
-const rPorta = F.lsPorta / 2;
-const pivoLS = new THREE.Group();
-pivoLS.position.set(S((lsx0 + lsx1) / 2 + rPorta), S(LS.centroPorta), S(F.lsFrente));
-gReforma.add(pivoLS);
-const aro = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta), S(rPorta), S(5), 48), mat.escuro);
-aro.rotation.x = Math.PI / 2;
-aro.position.set(S(-rPorta), 0, S(2.5));
-aro.castShadow = true;
-const visor = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta * 0.68), S(rPorta * 0.68), S(5.4), 40), mat.vidro);
-visor.rotation.x = Math.PI / 2;
-visor.position.copy(aro.position);
-pivoLS.add(aro, visor);
-rotulo(gReforma, 'Lava e seca · 60 cm', (xLS0 + xLS1) / 2, yTopo + 14, B.profundidade - 6);
-
-// Lava-louças (porta abre para baixo)
-const LL = M.reforma.lavaLoucas;
-const llx0 = (xLL0 + xLL1) / 2 - LL.largura / 2, llx1 = llx0 + LL.largura;
-gReforma.add(caixa(llx0, llx1, LL.dobradica, LL.altura, LL.folgaFundo, F.llFrente - 3, mat.inox));
-gReforma.add(caixa(llx0 + 1, llx1 - 1, 0, LL.dobradica, LL.folgaFundo + 2, F.llFrente - 5, mat.escuro, false));
-gReforma.add(caixa(llx0, llx1, LL.dobradica + F.llPorta, LL.altura, F.llFrente - 3, F.llFrente, mat.escuro));
-gReforma.add(caixa(llx0 + 4, llx0 + 16, LL.altura - 11, LL.altura - 6, F.llFrente, F.llFrente + 0.3, mat.cinzaClaro, false));
-const pivoLL = new THREE.Group();
-pivoLL.position.set(S((llx0 + llx1) / 2), S(LL.dobradica), S(F.llFrente));
-gReforma.add(pivoLL);
-pivoLL.add(caixa(-LL.largura / 2, LL.largura / 2, 0, F.llPorta, -3, 0, mat.inoxPorta));
-pivoLL.add(caixa(-15, 15, F.llPorta - 7, F.llPorta - 4, 0, 1.6, mat.metal));
-rotulo(gReforma, 'Lava-louças · 45 cm', (xLL0 + xLL1) / 2, yTopo + 30, B.profundidade - 6);
-
-cotaChao(gReforma, xAC0 + 10, B.profundidade, W, `≈ ${fmt(F.corredor)} cm livres`);
-const portasAbertas = () => cenario === 'reforma' && progressoPortas > 0.95;
-rotulo(gReforma, F.lsSobra >= 0 ? `sobram ≈ ${fmt(F.lsSobra)} cm` : 'encosta na parede',
-  (lsx0 + lsx1) / 2 - 14, 30, Math.min(W - 4, F.lsPonta + 2), situacao(F.lsSobra), portasAbertas);
-rotulo(gReforma, F.llSobra >= 0 ? `sobram ≈ ${fmt(F.llSobra)} cm` : 'encosta na parede',
-  (llx0 + llx1) / 2, 22, W - 6, situacao(F.llSobra), portasAbertas);
-
-// ---------- Cenário: hoje ----------
-const gHoje = new THREE.Group();
-mundo.add(gHoje);
-const Fo = M.hoje.forno, Ma = M.hoje.maquina, Ta = M.hoje.tanque, Sa = M.hoje.sapateira, Lx = M.hoje.lixeira;
-for (const x of [Fo.inicio + 1, Fo.inicio + Fo.largura - 1]) {
-  for (const z of [4, 3 + Fo.profundidade - 1]) gHoje.add(caixa(x - 0.6, x + 0.6, 0, Fo.alturaSuporte, z - 0.6, z + 0.6, mat.arame));
+function aplicarPortas(p) {
+  pivoLS.rotation.y = THREE.MathUtils.degToRad(F.ls.angulo) * p;
+  pivoLL.rotation.x = THREE.MathUtils.degToRad(F.ll.angulo) * p;
+  pivoLB.rotation.x = THREE.MathUtils.degToRad(F.lb.angulo) * p;
 }
-for (const y of [3, 38]) gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, y, y + 1, 3, 3 + Fo.profundidade, mat.arame));
-gHoje.add(caixa(Fo.inicio, Fo.inicio + Fo.largura, Fo.alturaSuporte, Fo.alturaSuporte + Fo.alturaForno, 3, 3 + Fo.profundidade, mat.branco));
-gHoje.add(caixa(Fo.inicio + 2, Fo.inicio + Fo.largura - 9, Fo.alturaSuporte + 3, Fo.alturaSuporte + Fo.alturaForno - 3, 3 + Fo.profundidade, 3.6 + Fo.profundidade, mat.escuro));
-rotulo(gHoje, 'Forno', Fo.inicio + Fo.largura / 2, Fo.alturaSuporte + Fo.alturaForno + 10, 3 + Fo.profundidade / 2);
-
-const zMaq0 = Ma.folgaFundo, zMaq1 = Ma.folgaFundo + Ma.profundidade;
-gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, 0.5, Ma.altura - 8, zMaq0, zMaq1, mat.branco));
-gHoje.add(caixa(Ma.inicio, Ma.inicio + Ma.largura, Ma.altura - 8, Ma.altura, zMaq0, zMaq0 + 12, mat.branco));
-gHoje.add(caixa(Ma.inicio + 3, Ma.inicio + Ma.largura - 3, Ma.altura - 8, Ma.altura - 6, zMaq0 + 14, zMaq1 - 3, mat.escuro));
-gHoje.add(caixa(Ma.inicio + 7, Ma.inicio + Ma.largura - 7, Ma.altura - 6, Ma.altura - 5.5, zMaq0 + 18, zMaq1 - 7, mat.vidro, false));
-rotulo(gHoje, 'Máquina atual', Ma.inicio + Ma.largura / 2, Ma.altura + 10, (zMaq0 + zMaq1) / 2);
-
-gHoje.add(caixa(Ta.inicio, Ta.inicio + Ta.largura, Ta.alturaBorda - 26, Ta.alturaBorda, 0, Ta.profundidade, mat.tanque));
-gHoje.add(caixa(Ta.inicio + 4, Ta.inicio + Ta.largura - 4, Ta.alturaBorda, Ta.alturaBorda + 0.3, 4, Ta.profundidade - 4, mat.tanqueFundo, false));
-gHoje.add(caixa(Ta.inicio + Ta.largura / 2 - 1, Ta.inicio + Ta.largura / 2 + 1, Ta.alturaBorda + 22, Ta.alturaBorda + 25, 0, 10, mat.metal));
-rotulo(gHoje, 'Tanque', Ta.inicio + Ta.largura / 2, Ta.alturaBorda + 34, Ta.profundidade / 2);
-
-gHoje.add(caixa(Sa.inicio, Sa.fim, 0, Sa.altura, Sa.z0, Sa.z1, mat.sapateira));
-gHoje.add(caixa(Lx.inicio, Lx.fim, 0, Lx.altura, Lx.z0, Lx.z1, mat.lixeira));
-cotaChao(gHoje, Ma.inicio + Ma.largura / 2, zMaq1, W, `≈ ${fmt(F.corredorHoje)} cm livres`);
-
-// ---------- Pessoa de 1,60 m para dar escala ----------
-const pessoa = new THREE.Group();
-const raio = 16, cabeca = 12, alturaCorpo = M.pessoa.altura - 2 * cabeca - 4;
-const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(S(raio), S(alturaCorpo - 2 * raio), 6, 16), mat.pessoa);
-tronco.scale.z = 0.6;
-tronco.position.y = S(alturaCorpo / 2);
-const bola = new THREE.Mesh(new THREE.SphereGeometry(S(cabeca), 20, 14), mat.pessoa);
-bola.position.y = S(M.pessoa.altura - cabeca);
-pessoa.add(tronco, bola);
-pessoa.position.set(S(M.pessoa.x), 0, S(M.pessoa.z));
-mundo.add(pessoa);
-rotulo(pessoa, 'pessoa de 1,60 m', 0, M.pessoa.altura + 10, 0, 'sutil');
+const suave = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
 // ---------- Vistas ----------
 // A cena é centralizada na área que o painel deixa livre.
@@ -691,19 +805,16 @@ const VISTAS = {
   janela: () => ({ pos: v3(S(L - 12), S(155), S(W * 0.78)), alvo: v3(S(60), S(70), S(W * 0.35)), fov: fovInterno() }),
   cima: () => {
     const alvo = v3(S(L / 2), 0, S((W - 60) / 2));
-    const vista = retrato()
+    return retrato()
       ? enquadrar(alvo, v3(0.002, 1, 0), S(W + 100), S(L + 40), 24)
       : enquadrar(alvo, v3(0, 1, 0.002), S(L + 40), S(W + 100), 24);
-    return vista;
   },
 };
-let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
 const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
 function irPara(nome, instantaneo = false) {
   vistaAtual = nome;
   usuarioMexeu = false;
-  pessoa.visible = nome !== 'frente' && nome !== 'janela'; // nessas vistas a pessoa taparia a bancada
-  aereos.visible = nome !== 'cima';
+  aplicarEstado();
   const v = VISTAS[nome]();
   v.pos.multiply(ESPELHO);
   v.alvo.multiply(ESPELHO);
@@ -718,27 +829,29 @@ function irPara(nome, instantaneo = false) {
 }
 controles.addEventListener('start', () => { usuarioMexeu = true; transicao = null; });
 
-// ---------- Cenário e portas ----------
-let cenario = 'reforma', progressoPortas = 0, alvoPortas = 0, mostrarNomes = true;
+// ---------- Cenário, tipo de lava-louças e portas ----------
 const botaoPortas = document.getElementById('portas');
 function definirCenario(nome) {
   cenario = nome;
-  gReforma.visible = nome === 'reforma';
-  gHoje.visible = nome === 'hoje';
   document.getElementById('cenario-hoje').setAttribute('aria-pressed', String(nome === 'hoje'));
   document.getElementById('cenario-reforma').setAttribute('aria-pressed', String(nome === 'reforma'));
+  document.getElementById('linha-variante').hidden = nome !== 'reforma';
   botaoPortas.disabled = nome !== 'reforma';
   if (nome !== 'reforma') definirPortas(false);
+  aplicarEstado();
+  atualizarPainel();
+}
+function definirVariante(nome) {
+  variante = nome;
+  document.getElementById('variante-piso').setAttribute('aria-pressed', String(nome === 'piso'));
+  document.getElementById('variante-bancada').setAttribute('aria-pressed', String(nome === 'bancada'));
+  aplicarEstado();
   atualizarPainel();
 }
 function definirPortas(abrir) {
   alvoPortas = abrir ? 1 : 0;
   botaoPortas.setAttribute('aria-pressed', String(abrir));
   botaoPortas.textContent = abrir ? 'Fechar as portas dos aparelhos' : 'Abrir as portas dos aparelhos';
-}
-function aplicarPortas(p) {
-  pivoLS.rotation.y = THREE.MathUtils.degToRad(F.lsAngulo) * p;
-  pivoLL.rotation.x = THREE.MathUtils.degToRad(F.llAngulo) * p;
 }
 
 // ---------- Painel ----------
@@ -752,7 +865,10 @@ function itemResultado(nome, valor, classe, chip, detalhe) {
   li.append(n, v, d);
   return li;
 }
+const textoSobra = s => s >= 0 ? `sobram ≈ ${fmt(s)} cm` : 'encosta';
+const metros = cm => (cm / 100).toFixed(2).replace('.', ',');
 function atualizarPainel() {
+  document.getElementById('subtitulo').textContent = `Simulação aproximada · ${metros(B.comprimento)} m × ${metros(W)} m`;
   const ul = document.getElementById('resultados');
   ul.replaceChildren();
   if (cenario === 'hoje') {
@@ -760,23 +876,82 @@ function atualizarPainel() {
       'Da frente da máquina atual até a parede da porta.'));
     return;
   }
-  ul.append(itemResultado('Corredor com tudo fechado', `≈ ${fmt(F.corredor)} cm`, 'ok', 'passa 1 pessoa',
+  const corredor = variante === 'piso' ? F.corredorPiso : F.corredorBancada;
+  const sCor = corredor >= 45 ? 'ok' : corredor >= 35 ? 'justo' : 'limite';
+  ul.append(itemResultado('Corredor com tudo fechado', `≈ ${fmt(corredor)} cm`, sCor, { ok: 'passa 1 pessoa', justo: 'apertado', limite: 'muito estreito' }[sCor],
     `Da frente da bancada (${fmt(B.profundidade)} cm de fundo) até a parede da porta.`));
-  const sLS = situacao(F.lsSobra);
-  ul.append(itemResultado('Lava e seca aberta', F.lsSobra >= 0 ? `sobram ≈ ${fmt(F.lsSobra)} cm` : 'encosta', sLS, textosChip[sLS],
-    `Com a porta aberta, ocupa ≈ ${fmt(F.lsPonta)} cm a partir da parede de trás.`));
-  const sLL = situacao(F.llSobra);
-  ul.append(itemResultado('Lava-louças aberta', F.llSobra >= 0 ? `sobram ≈ ${fmt(F.llSobra)} cm` : 'encosta', sLL, textosChip[sLL],
-    F.llSobra >= 0
-      ? `Com a porta deitada, ocupa ≈ ${fmt(F.llPonta)} cm a partir da parede de trás.`
-      : `A porta deitada precisaria de ≈ ${fmt(F.llPonta)} cm e o corredor tem ${fmt(W)}. Ela para em ≈ ${fmt(F.llAngulo)}°, quase deitada.`));
+  const sLS = situacao(F.ls.sobra);
+  ul.append(itemResultado('Lava e seca aberta', textoSobra(F.ls.sobra), sLS, textosChip[sLS],
+    `Com a porta aberta, ocupa ≈ ${fmt(F.ls.ponta)} cm a partir da parede de trás.`));
+  if (variante === 'piso') {
+    const sLL = situacao(F.ll.sobra);
+    ul.append(itemResultado('Lava-louças aberta', textoSobra(F.ll.sobra), sLL, textosChip[sLL],
+      F.ll.sobra >= 0
+        ? `Com a porta deitada, ocupa ≈ ${fmt(F.ll.ponta)} cm a partir da parede de trás.`
+        : `A porta deitada precisaria de ≈ ${fmt(F.ll.ponta)} cm e o corredor tem ${fmt(W)}. Ela para em ≈ ${fmt(F.ll.angulo)}°, quase deitada.`));
+  } else {
+    const sLB = situacao(F.lb.sobra);
+    ul.append(itemResultado('Lava-louças de bancada aberta', textoSobra(F.lb.sobra), sLB, textosChip[sLB],
+      `A porta abre na altura da bancada. A máquina ocupa ${fmt(M.reforma.lavaLoucasBancada.largura)} cm da pedra e o nicho de baixo vira armário.`));
+  }
 }
 document.getElementById('nota-medidas').textContent =
-  'Medidas aproximadas, para ter noção do espaço. Aparelhos com medidas de catálogo: lava e seca Samsung WD11M (60 × 85 × 65 cm) ' +
-  'e lava-louças de 10 serviços (45 × 85 × 60 cm). A lava-louças aberta usa a média dos fabricantes (115 a 120 cm): confira no manual do modelo escolhido.';
+  'Medidas aproximadas, para ter noção do espaço. Aparelhos com medidas de catálogo: lava e seca Samsung WD11M (60 × 85 × 65 cm), ' +
+  'lava-louças de piso de 10 serviços (45 × 85 × 60 cm) e lava-louças de bancada de 8 serviços (55 × 60 × 50 cm). ' +
+  'A lava-louças de piso aberta usa a média dos fabricantes (115 a 120 cm); a de bancada é estimada. Confira no manual do modelo escolhido.';
 
+// ---------- E se…? (ajuste de medidas) ----------
+const campos = document.getElementById('campos');
+const restaurar = document.getElementById('restaurar');
+const entradas = {};
+for (const a of AJUSTES) {
+  const campo = document.createElement('div'); campo.className = 'campo';
+  const rotuloCampo = document.createElement('label'); rotuloCampo.htmlFor = `aj-${a.id}`; rotuloCampo.textContent = a.nome;
+  const saida = document.createElement('output'); saida.htmlFor = `aj-${a.id}`;
+  const entrada = document.createElement('input');
+  Object.assign(entrada, { type: 'range', id: `aj-${a.id}`, min: a.min, max: a.max, step: 1, value: ajustes[a.id] });
+  const ajuda = document.createElement('p'); ajuda.className = 'ajuda'; ajuda.textContent = a.ajuda;
+  campo.append(rotuloCampo, saida, entrada, ajuda);
+  campos.append(campo);
+  entradas[a.id] = { entrada, saida };
+  entrada.addEventListener('input', () => {
+    ajustes[a.id] = Number(entrada.value);
+    salvarAjustes();
+    atualizarCampos();
+    agendarMontagem();
+  });
+}
+function atualizarCampos() {
+  for (const a of AJUSTES) {
+    const { entrada, saida } = entradas[a.id];
+    entrada.value = ajustes[a.id];
+    saida.textContent = `${ajustes[a.id]} cm`;
+  }
+  restaurar.disabled = AJUSTES.every(a => ajustes[a.id] === PADRAO[a.id]);
+}
+restaurar.addEventListener('click', () => {
+  ajustes = { ...PADRAO };
+  salvarAjustes();
+  atualizarCampos();
+  agendarMontagem();
+});
+let montagemAgendada = false;
+function agendarMontagem() {
+  if (montagemAgendada) return;
+  montagemAgendada = true;
+  requestAnimationFrame(() => {
+    montagemAgendada = false;
+    construir();
+    atualizarPainel();
+    if (!usuarioMexeu) irPara(vistaAtual, true);
+  });
+}
+
+// ---------- Botões ----------
 document.getElementById('cenario-hoje').addEventListener('click', () => definirCenario('hoje'));
 document.getElementById('cenario-reforma').addEventListener('click', () => definirCenario('reforma'));
+document.getElementById('variante-piso').addEventListener('click', () => definirVariante('piso'));
+document.getElementById('variante-bancada').addEventListener('click', () => definirVariante('bancada'));
 botaoPortas.addEventListener('click', () => definirPortas(alvoPortas === 0));
 document.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click', () => irPara(b.dataset.vista)));
 const botaoNomes = document.getElementById('nomes');
@@ -810,12 +985,10 @@ function redimensionar() {
 }
 window.addEventListener('resize', redimensionar);
 new ResizeObserver(redimensionar).observe(painel);
-mostrar.addEventListener('click', () => requestAnimationFrame(redimensionar));
 
 // ---------- Laço de desenho ----------
 const relogio = new THREE.Clock();
 const tmp = new THREE.Vector3();
-const suave = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 function visivel(o) { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; }
 function quadro() {
   const dt = Math.min(relogio.getDelta(), 0.05);
@@ -841,6 +1014,9 @@ function quadro() {
   requestAnimationFrame(quadro);
 }
 
+construir();
+atualizarCampos();
+definirVariante('piso');
 definirCenario('reforma');
 definirPortas(false);
 redimensionar();
