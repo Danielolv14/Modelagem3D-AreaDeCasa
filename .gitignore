@@ -1,0 +1,7 @@
+# Fotos da casa: usadas só como referência local, nunca publicadas (repo público)
+fotos/
+*.jpg
+*.jpeg
+*.heic
+*.png
+!assets/**/*.png
