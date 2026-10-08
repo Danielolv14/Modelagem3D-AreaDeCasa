@@ -44,8 +44,26 @@ Fontes:
 - Lava-louças de 10 serviços: [Buscapé, BLF10BR](https://www.buscape.com.br/lava-loucas/lava-loucas-10-servicos-brastemp-blf10br-inox), [Buscapé, LL10X](https://www.buscape.com.br/lava-loucas/lava-loucas-10-servicos-electrolux-ll10x-inox), [Fast Shop, DW50C6070FS](https://site.fastshop.com.br/lava-loucas-samsung-inox-com-10-servicos---dw50c6070fs-sgdw50c6070fs_prd/p)
 - Porta aberta de lava-louças de 45 cm: [Blanco DWF45X](https://www.winnings.com.au/manuals/ak/9/5/a/2/95a2067dc860248179537526a3f1d718ff4467fe_Blanco_DWF45X_45cm_Freestanding_Dishwasher_Specifications_Sheet.pdf), [Miele](https://media.miele.com/downloads/n-/ie/FS_11550950_IEE_IE-en-IE.pdf), [Bosch SRS55C02GB](https://www.bosch-home.co.uk/customer-service/SRS55C02GB/15)
 
+## Plano B: lava-louças de bancada
+Fica em cima da pedra, ao lado da cuba, e o nicho de 50 cm embaixo vira armário.
+
+| Modelo de referência | L × A × P |
+|---|---|
+| Electrolux LS08E (8 serviços) | 55 × 60,9 × 50 cm |
+| Midea DWA08P2 (8 serviços) | 55 × 59,5 × 50 cm |
+| Brastemp BLF08BB (8 serviços) | 51 × 63 × 65 cm, a mais funda |
+
+- A porta abre na altura da bancada. Com ~95 cm a partir da parede de trás (estimativa), **sobram ~20 cm**.
+- Vantagens: sem risco de a porta bater na parede da frente, e a louça fica na altura das mãos.
+- Contras: ocupa ~55 cm da bancada e lava menos louça por vez (8 em vez de 10 serviços).
+- Fonte: [Casa dos Eletrodomésticos](https://www.casadoseletrodomesticos.com.br/melhor-lava-loucas-de-bancada)
+
 ## Resultado da simulação (versão 1)
 - Corredor com tudo fechado: ≈ 50 cm.
 - Lava e seca aberta: sobram ≈ 7 cm até a parede da porta.
 - Lava-louças aberta: encosta na parede da frente. A porta para em ≈ 79°, quase deitada.
 - Nos dois casos, a pessoa fica de lado para colocar e tirar as coisas, como o Gemini também previu.
+
+## Simulação online
+- Link público: https://area-de-servico-3d.vercel.app (projeto `area-de-servico-3d` na Vercel, publicado a partir da branch `claude/fervent-hopper-dqz7df`)
+- Na página, o painel "E se…?" muda corredor, fundo da bancada, passagem e porta aberta dos aparelhos, e o 3D se atualiza na hora.
