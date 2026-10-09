@@ -78,6 +78,13 @@ Fica em cima da pedra, ao lado da cuba, e o nicho de 50 cm embaixo vira armário
 - Vantagem: a bancada de pedra fica toda livre. Contra: precisa abaixar para carregar, se não tiver base.
 - A foto de divulgação da Midea mostra o aparelho num nicho embaixo de uma bancada, mas vale conferir no manual a folga de ventilação nas laterais e em cima.
 
+### Opção: Midea ao lado da lava e seca, levantada, com gaveta embaixo (pedido da mãe, 2026-10-09)
+- Montagem do nicho de 57 cm, de baixo para cima: **gaveta de 22 cm** de altura → **tampo de 1,8 cm** onde a máquina apoia → Midea (59,5 cm) → **sobram ~4 cm** até a pedra (vão de 87,5 cm).
+- A porta da lava-louças passa a abrir a **~34 cm do chão** (no chão, abria a ~10 cm), e menos abaixar para carregar.
+- A gaveta fica com a frente alinhada com as portas do armário da cuba. Por dentro sobram ~16 a 18 cm úteis: dá para pastilhas, sabão, panos.
+- Porta aberta: continuam **sobrando ~24 cm** até a parede da frente. A porta abre por cima da gaveta, sem bater nela.
+- **Atenção:** a folga de ~4 cm em cima é justa. Confirmar no manual da Midea a ventilação exigida em cima. Se precisar de mais folga, a gaveta pode baixar para 18 a 20 cm, e cada centímetro a menos na gaveta vira folga em cima.
+
 ## Resultado da simulação (versão 1)
 - Corredor com tudo fechado: ≈ 50 cm.
 - Lava e seca aberta: sobram ≈ 7 cm até a parede da porta.

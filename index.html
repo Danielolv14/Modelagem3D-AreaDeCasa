@@ -229,6 +229,9 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
           <button type="button" id="posicao-baixo" aria-pressed="false">Ao lado da lava e seca</button>
         </div>
       </div>
+      <div class="linha" id="linha-gaveta" hidden>
+        <button type="button" class="botao" id="gaveta" aria-pressed="true">Com gaveta embaixo</button>
+      </div>
       <p class="nota" id="nota-escolhidos"></p>
       <div class="cartoes" id="cartoes"></div>
     </div>
@@ -320,6 +323,8 @@ function montarMedidas(a, { llEmbaixo = false } = {}) {
       // Plano B: lava-louças de bancada de 8 serviços, medidas da Midea Touch Plus MDWTF08S.
       // Pela foto de frente: rodapé de 10,3 cm, porta de 41,5 cm e painel de 7,7 cm (porta aberta = 50 + 41,5).
       lavaLoucasBancada: { largura: 55, altura: 59.5, profundidade: 50, portaAberta: 91.5, dobradica: 10.3, folgaFundo: 5 },
+      // Gaveta embaixo da lava-louças quando ela fica ao lado da lava e seca: a máquina apoia num tampo em cima da gaveta.
+      gavetaLL: { altura: 22, tampo: 1.8 },
       cuba: { largura: 30, profundidade: 35 },
     },
     hoje: {
@@ -669,8 +674,9 @@ let aba = 'simulacao', cenario = 'reforma', variante = 'piso', progressoPortas =
 const escolhidos = () => aba === 'escolhidos';
 const cenarioAtivo = () => escolhidos() ? 'reforma' : cenario;
 const varianteAtiva = () => escolhidos() ? 'bancada' : variante;
-let posicaoLL = 'cima';
+let posicaoLL = 'cima', gavetaLL = true;
 const llEmbaixo = () => escolhidos() && posicaoLL === 'baixo';
+const comGaveta = () => llEmbaixo() && gavetaLL;
 let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
 
 function grupoParede(ponto, normal) {
@@ -859,7 +865,15 @@ function construir() {
   gBancadaLL = new THREE.Group();
   gReforma.add(gBancadaLL);
   const LB = M.reforma.lavaLoucasBancada, meioLL = (xLL0 + xLL1) / 2;
-  const embaixo = llEmbaixo(), yLL = embaixo ? 0 : yTopo;
+  const embaixo = llEmbaixo(), G = M.reforma.gavetaLL;
+  const yLL = !embaixo ? yTopo : comGaveta() ? G.altura + G.tampo : 0;
+  if (comGaveta()) {
+    gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 0, G.altura, 2, B.profundidade - 4, mat.armario));
+    gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 1, G.altura - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+    gBancadaLL.add(caixa(meioLL - 10, meioLL + 10, G.altura - 6, G.altura - 4.8, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+    gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, G.altura, G.altura + G.tampo, 2, B.profundidade - 2, mat.armario));
+    rotulo(gBancadaLL, `Gaveta · ${fmt(G.altura)} cm`, meioLL, G.altura / 2, B.profundidade);
+  }
   if (!embaixo) {
     gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
     gBancadaLL.add(caixa(xLL0 + 1.5, xLL1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
@@ -1025,6 +1039,15 @@ function definirPosicao(nome) {
   posicaoLL = nome;
   document.getElementById('posicao-cima').setAttribute('aria-pressed', String(nome === 'cima'));
   document.getElementById('posicao-baixo').setAttribute('aria-pressed', String(nome === 'baixo'));
+  document.getElementById('linha-gaveta').hidden = nome !== 'baixo';
+  construir();
+  atualizarPainel();
+}
+function definirGaveta(ligada) {
+  gavetaLL = ligada;
+  const botao = document.getElementById('gaveta');
+  botao.setAttribute('aria-pressed', String(ligada));
+  botao.textContent = ligada ? 'Com gaveta embaixo' : 'Sem gaveta (máquina no chão)';
   construir();
   atualizarPainel();
 }
@@ -1107,7 +1130,9 @@ function atualizarCartoes() {
   const ls = M.reforma.lavaSeca, lb = M.reforma.lavaLoucasBancada;
   const sobraLadoLS = (M.reforma.nichoLavaSeca - ls.largura) / 2, sobraCimaLS = B.alturaLivre - ls.altura;
   const ateArmario = M.armariosAereos.base - (B.alturaLivre + B.espessura) - lb.altura;
-  const sobraLadoLL = (M.reforma.nichoLavaLoucas - lb.largura) / 2, sobraCimaLL = B.alturaLivre - lb.altura;
+  const G = M.reforma.gavetaLL, baseLL = comGaveta() ? G.altura + G.tampo : 0;
+  const sobraLadoLL = (M.reforma.nichoLavaLoucas - lb.largura) / 2, sobraCimaLL = B.alturaLivre - baseLL - lb.altura;
+  const alturaPorta = baseLL + lb.dobradica;
   document.getElementById('cartoes').replaceChildren(
     cartao(ESCOLHIDOS.lavaSeca, [
       ['Tamanho', `${fmt(ls.largura)} × ${fmt(ls.altura)} × ${fmt(ls.profundidade)} cm (L × A × P)`],
@@ -1117,8 +1142,10 @@ function atualizarCartoes() {
     cartao(ESCOLHIDOS.lavaLoucas, [
       ['Tamanho', `${fmt(lb.largura)} × ${cm(lb.altura).replace(' cm', '')} × ${fmt(lb.profundidade)} cm (L × A × P)`],
       ...(posicaoLL === 'baixo' ? [
-        ['Embaixo da pedra', `nicho de ${fmt(M.reforma.nichoLavaLoucas)} cm: sobra ${cm(sobraLadoLL)} de cada lado e ${cm(sobraCimaLL)} até a pedra`, ...(sobraLadoLL >= 1 && sobraCimaLL >= 0 ? ['ok', 'cabe'] : ['limite', 'não cabe'])],
-        ['Porta aberta', textoSobra(F.lb.sobra) + ' até a parede da frente (porta medida pela foto)', situacao(F.lb.sobra)],
+        ['Embaixo da pedra', `nicho de ${fmt(M.reforma.nichoLavaLoucas)} cm: sobra ${cm(sobraLadoLL)} de cada lado`, ...(sobraLadoLL >= 1 ? ['ok', 'cabe'] : ['limite', 'não cabe'])],
+        ...(comGaveta() ? [['Gaveta embaixo', `${fmt(G.altura)} cm de altura, com a máquina apoiada num tampo de ${cm(G.tampo)} em cima`]] : []),
+        ['Até a pedra', `sobram ${cm(sobraCimaLL)} em cima da máquina`, ...(sobraCimaLL >= 5 ? ['ok', 'folgado'] : sobraCimaLL >= 2 ? ['justo', 'justo'] : ['limite', 'não cabe'])],
+        ['Porta aberta', `abre a ${cm(alturaPorta)} do chão; ` + textoSobra(F.lb.sobra) + ' até a parede da frente', situacao(F.lb.sobra)],
         ['Armário da cuba', `diminui de 85 para ${fmt(M.reforma.armarioCuba)} cm`],
         ['Em cima da pedra', 'a bancada fica toda livre'],
       ] : [
@@ -1128,9 +1155,10 @@ function atualizarCartoes() {
       ]),
     ]),
   );
-  document.getElementById('nota-escolhidos').textContent = posicaoLL === 'baixo'
-    ? 'A lava e seca e a lava-louças lado a lado, embaixo da pedra. Para a lava-louças de 55 cm caber, o nicho dela passa de 50 para 57 cm e o armário da cuba encolhe de 85 para 78 cm.'
-    : 'A lava e seca embaixo da pedra e a lava-louças em cima dela, ao lado da cuba. Medidas do fabricante.';
+  document.getElementById('nota-escolhidos').textContent = posicaoLL !== 'baixo'
+    ? 'A lava e seca embaixo da pedra e a lava-louças em cima dela, ao lado da cuba. Medidas do fabricante.'
+    : 'A lava e seca e a lava-louças lado a lado, embaixo da pedra. Para a lava-louças de 55 cm caber, o nicho dela passa de 50 para 57 cm e o armário da cuba encolhe de 85 para 78 cm.' +
+      (comGaveta() ? ` A gaveta de ${fmt(G.altura)} cm embaixo levanta a máquina, e a porta passa a abrir a ${cm(alturaPorta)} do chão.` : '');
 }
 
 document.getElementById('nota-medidas').textContent =
@@ -1188,6 +1216,7 @@ function agendarMontagem() {
 // ---------- Botões ----------
 document.getElementById('posicao-cima').addEventListener('click', () => definirPosicao('cima'));
 document.getElementById('posicao-baixo').addEventListener('click', () => definirPosicao('baixo'));
+document.getElementById('gaveta').addEventListener('click', () => definirGaveta(!gavetaLL));
 document.getElementById('aba-simulacao').addEventListener('click', () => definirAba('simulacao'));
 document.getElementById('aba-escolhidos').addEventListener('click', () => definirAba('escolhidos'));
 document.querySelector('.abas').addEventListener('keydown', evento => {
