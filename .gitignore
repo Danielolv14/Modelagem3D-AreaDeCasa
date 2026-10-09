@@ -5,3 +5,6 @@ fotos/
 *.heic
 *.png
 !assets/**/*.png
+# Fotos dos produtos escolhidos (fabricantes), usadas como textura e nas fichas
+!img/
+!img/*.jpg

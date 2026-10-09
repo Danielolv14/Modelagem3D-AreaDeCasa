@@ -123,6 +123,24 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 .nota { margin: 0; color: var(--muted); font-size: 0.78rem; }
 
+.abas { display: inline-flex; gap: 14px; }
+.abas button {
+  border: 0; border-bottom: 3px solid transparent; padding: 6px 0 5px;
+  background: transparent; color: var(--muted);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.abas button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.conteudo-aba { display: flex; flex-direction: column; gap: 12px; }
+.cartoes { display: grid; gap: 10px; }
+.cartao { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.cartao img { display: block; width: 76px; height: auto; border-radius: 6px; background: #ffffff; }
+.cartao .texto { display: grid; gap: 6px; min-width: 0; }
+.cartao h2 { margin: 0; font-size: 1rem; line-height: 1.25; }
+.cartao .modelo { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.cartao dl { margin: 0; display: grid; gap: 1px; font-size: 0.86rem; }
+.cartao dt { margin-top: 5px; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.cartao dd { margin: 0; font-variant-numeric: tabular-nums; }
+.cartao a { font-size: 0.82rem; color: var(--accent); }
 .ajustes { border-top: 1px solid var(--line); padding-top: 10px; }
 .ajustes summary { cursor: pointer; font-weight: 700; color: var(--accent); }
 .ajustes summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
@@ -170,28 +188,46 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   <section class="painel" id="painel" aria-label="Controles da simulação">
     <div class="linha entre">
+      <div class="abas" role="tablist" aria-label="Seções">
+        <button type="button" role="tab" id="aba-simulacao" aria-selected="true" aria-controls="conteudo-simulacao">Simulação</button>
+        <button type="button" role="tab" id="aba-escolhidos" aria-selected="false" aria-controls="conteudo-escolhidos" tabindex="-1">Aparelhos escolhidos</button>
+      </div>
+      <button type="button" class="discreto" id="esconder">Esconder</button>
+    </div>
+
+    <div class="conteudo-aba" id="conteudo-simulacao" role="tabpanel" aria-labelledby="aba-simulacao">
       <div class="segmentado" role="group" aria-label="Cenário">
         <button type="button" id="cenario-hoje" aria-pressed="false">Hoje</button>
         <button type="button" id="cenario-reforma" aria-pressed="true">Com a reforma</button>
       </div>
-      <button type="button" class="discreto" id="esconder">Esconder painel</button>
+
+      <div class="linha" id="linha-variante">
+        <span class="rotulo-linha">Lava-louças</span>
+        <div class="segmentado pequeno" role="group" aria-label="Tipo de lava-louças">
+          <button type="button" id="variante-piso" aria-pressed="true">De piso · 10 serv.</button>
+          <button type="button" id="variante-bancada" aria-pressed="false">De bancada · 8 serv.</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="titulo-secao">Espaço que sobra</p>
+        <ul class="resultados" id="resultados"></ul>
+      </div>
+
+      <details class="ajustes" id="ajustes">
+        <summary>E se…? Ajustar medidas</summary>
+        <div id="campos"></div>
+        <button type="button" class="discreto" id="restaurar">Voltar às medidas originais</button>
+      </details>
     </div>
 
-    <div class="linha" id="linha-variante">
-      <span class="rotulo-linha">Lava-louças</span>
-      <div class="segmentado pequeno" role="group" aria-label="Tipo de lava-louças">
-        <button type="button" id="variante-piso" aria-pressed="true">De piso · 10 serv.</button>
-        <button type="button" id="variante-bancada" aria-pressed="false">De bancada · 8 serv.</button>
-      </div>
+    <div class="conteudo-aba" id="conteudo-escolhidos" role="tabpanel" aria-labelledby="aba-escolhidos" hidden>
+      <p class="nota">Os dois aparelhos escolhidos, com as medidas do fabricante, no lugar planejado: a lava e seca embaixo da pedra e a lava-louças em cima dela, ao lado da cuba.</p>
+      <div class="cartoes" id="cartoes"></div>
     </div>
 
     <div class="linha">
       <button type="button" class="botao" id="portas" aria-pressed="false">Abrir as portas dos aparelhos</button>
-    </div>
-
-    <div>
-      <p class="titulo-secao">Espaço que sobra</p>
-      <ul class="resultados" id="resultados"></ul>
     </div>
 
     <div>
@@ -204,12 +240,6 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
         <button type="button" data-vista="cima" aria-pressed="false">De cima</button>
       </div>
     </div>
-
-    <details class="ajustes" id="ajustes">
-      <summary>E se…? Ajustar medidas</summary>
-      <div id="campos"></div>
-      <button type="button" class="discreto" id="restaurar">Voltar às medidas originais</button>
-    </details>
 
     <div class="linha entre">
       <p class="nota">Arraste para girar · pinça ou rolagem para zoom</p>
@@ -276,10 +306,11 @@ function montarMedidas(a) {
       bancada: { inicio: P, comprimento: 200, profundidade: a.fundo, alturaLivre: 87.5, espessura: 3, rodabanca: 10 },
       // Da passagem da cozinha para a janela:
       nichoLavaSeca: 65, nichoLavaLoucas: 50, armarioCuba: 85,
-      lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: a.portaLS, centroPorta: 48, folgaFundo: 3 },
+      lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: a.portaLS, centroPorta: 45, folgaFundo: 3 }, // centro da porta medido na foto de frente
       lavaLoucas: { largura: 44.8, altura: 84.5, profundidade: 60, portaAberta: a.portaLL, dobradica: 10, folgaFundo: 3 },
-      // Plano B: lava-louças de bancada de 8 serviços (Electrolux LS08E / Midea DWA08P2). Porta aberta (E).
-      lavaLoucasBancada: { largura: 55, altura: 59.5, profundidade: 50, portaAberta: 95, dobradica: 4, folgaFundo: 5 },
+      // Plano B: lava-louças de bancada de 8 serviços, medidas da Midea Touch Plus MDWTF08S.
+      // Pela foto de frente: rodapé de 10,3 cm, porta de 41,5 cm e painel de 7,7 cm (porta aberta = 50 + 41,5).
+      lavaLoucasBancada: { largura: 55, altura: 59.5, profundidade: 50, portaAberta: 91.5, dobradica: 10.3, folgaFundo: 5 },
       cuba: { largura: 30, profundidade: 35 },
     },
     hoje: {
@@ -292,6 +323,24 @@ function montarMedidas(a) {
     pessoa: { altura: 160, x: L - 50 },
   };
 }
+
+// Aparelhos escolhidos pelo usuário (aba "Aparelhos escolhidos").
+const ESCOLHIDOS = {
+  lavaSeca: {
+    nome: 'Lava e seca Samsung WD11M',
+    modelo: 'WD11M4473PX · Inox Look · lava 11 kg, seca 7 kg',
+    foto: 'img/samsung.jpg',
+    alt: 'Foto da lava e seca Samsung WD11M Inox Look',
+    loja: 'https://www.samsung.com/br/washers-and-dryers/washer-dryer-combo/wd4000t-front-loading-air-wash-drum-clean-bubble-soak-11kg-gray-wd11m4473px-az',
+  },
+  lavaLoucas: {
+    nome: 'Lava-louças Midea Touch Plus',
+    modelo: 'MDWTF08S · Cinza · 8 serviços · de bancada',
+    foto: 'img/midea.jpg',
+    alt: 'Foto da lava-louças Midea Touch Plus cinza, com as medidas 55 × 59,5 × 50 cm',
+    loja: 'https://site.fastshop.com.br/lava-loucas-midea-touch-plus-cinza-com-08-servicos-e-05-programas-de-lavagem---mdwtf08s-1qmdwtf08s_prd/p',
+  },
+};
 
 // ---------- Contas de folga ----------
 function calcularFolgas(M) {
@@ -437,12 +486,83 @@ const mat = {
   arame: padrao(0x8d9396, { roughness: 0.45, metalness: 0.5 }),
   sapateira: padrao(0x2e3134, { roughness: 0.6, transparent: true, opacity: 0.7 }),
   lixeira: padrao(0x7c8a90, { roughness: 0.5 }),
+  inoxLook: padrao(0x55555b, { roughness: 0.35, metalness: 0.35 }),   // cor tirada da foto da Samsung
+  portaSamsungVerso: padrao(0x5d6064, { roughness: 0.4, metalness: 0.2 }),
+  cinzaMidea: padrao(0x46484a, { roughness: 0.35, metalness: 0.35 }), // cor tirada da foto da Midea
+  cinzaMideaPorta: padrao(0x5a5e61, { roughness: 0.3, metalness: 0.35 }),
   pessoa: new THREE.MeshStandardMaterial({ color: 0x5c7a86, roughness: 0.85, transparent: true, opacity: 0.5, depthWrite: false }),
   cozinha: padrao(0xd8d1c1, { roughness: 0.9 }),
   cota: new THREE.MeshBasicMaterial({ color: 0x1d6470 }),
   setor: new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.13, depthWrite: false }),
   arco: new THREE.MeshBasicMaterial({ color: 0xa5552a, transparent: true, opacity: 0.6, depthWrite: false }),
 };
+
+// ---------- Fotos dos aparelhos escolhidos ----------
+// Frentes recortadas das fotos dos fabricantes. Como a cena é espelhada em z (ESPELHO),
+// cada foto é espelhada antes de virar textura, para o texto aparecer na direção certa.
+const FOTOS = { samsung: 'img/samsung-frente.jpg', midea: 'img/midea-frente.jpg' };
+const RECORTE_MIDEA = { painel: 48 / 370, rodape: 306 / 370 }; // emendas da frente da Midea, em fração da altura da foto
+const fotos = {};
+for (const [chave, url] of Object.entries(FOTOS)) {
+  const img = new Image();
+  img.onload = () => { fotos[chave] = img; if (escolhidos()) agendarMontagem(); };
+  img.src = url;
+}
+const cacheFoto = new Map();
+function guardado(id, criar) {
+  if (!cacheFoto.has(id)) cacheFoto.set(id, criar());
+  return cacheFoto.get(id);
+}
+function texturaCanvas(c) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+// Faixa horizontal da foto (topo e base em fração da altura) como textura espelhada.
+function texturaFoto(chave, topo, base) {
+  return guardado(`tex:${chave}:${topo}:${base}`, () => {
+    const img = fotos[chave], sy = img.naturalHeight * topo, sh = img.naturalHeight * (base - topo);
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = Math.max(1, Math.round(sh));
+    const g = c.getContext('2d');
+    g.translate(c.width, 0); g.scale(-1, 1);
+    g.drawImage(img, 0, sy, img.naturalWidth, sh, 0, 0, c.width, c.height);
+    return texturaCanvas(c);
+  });
+}
+// Materiais de uma caixa com a foto só na frente (+z); sem a foto carregada, usa a cor lisa.
+function comFoto(chave, topo, base, lado) {
+  if (!fotos[chave]) return lado;
+  const frente = guardado(`mat:${chave}:${topo}:${base}`, () => new THREE.MeshStandardMaterial({
+    map: texturaFoto(chave, topo, base), roughness: 0.5, metalness: 0.05,
+    emissive: 0xffffff, emissiveMap: texturaFoto(chave, topo, base), emissiveIntensity: 0.25,
+  }));
+  return [lado, lado, lado, lado, frente, lado];
+}
+// Porta fechada da Samsung: aro preto e vidro mostrando o tambor recortado da foto.
+function materialPortaSamsung() {
+  if (!fotos.samsung) return mat.escuro;
+  return guardado('mat:porta-samsung', () => {
+    const img = fotos.samsung, k = img.naturalWidth / 600, c = document.createElement('canvas');
+    c.width = c.height = 512;
+    const g = c.getContext('2d'), r = 256, rv = r * 0.64;
+    const aro = g.createRadialGradient(r * 0.8, r * 0.7, 20, r, r, r);
+    aro.addColorStop(0, '#34373b'); aro.addColorStop(1, '#141618');
+    g.fillStyle = aro; g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.fill();
+    g.save();
+    g.beginPath(); g.arc(r, r, rv, 0, Math.PI * 2); g.clip();
+    const cx = 300 * k, cy = 402 * k, rf = 175 * k;
+    g.drawImage(img, cx - rf, cy - rf, rf * 2, rf * 2, r - rv, r - rv, rv * 2, rv * 2);
+    const brilho = g.createRadialGradient(r * 0.75, r * 0.7, 10, r, r, rv);
+    brilho.addColorStop(0, 'rgba(255,255,255,0.45)'); brilho.addColorStop(1, 'rgba(255,255,255,0.08)');
+    g.fillStyle = brilho; g.fillRect(0, 0, 512, 512);
+    g.restore();
+    g.strokeStyle = '#9aa0a4'; g.lineWidth = 7;
+    g.beginPath(); g.arc(r, r, rv, 0, Math.PI * 2); g.stroke();
+    return new THREE.MeshStandardMaterial({ map: texturaCanvas(c), roughness: 0.25, metalness: 0.1 });
+  });
+}
 
 // ---------- Ajudantes ----------
 const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -503,17 +623,31 @@ function cotaChao(grupo, x, z0, z1, texto) {
   rotulo(grupo, texto, x, 4, (z0 + z1) / 2, 'medida');
 }
 // Lava-louças com porta que abre para baixo. Devolve o pivô da porta.
-function lavaLoucas(grupo, ap, xCentro, yBase, folgas) {
+function lavaLoucas(grupo, ap, xCentro, yBase, folgas, corpo = mat.inox, folha = mat.inoxPorta) {
   const x0 = xCentro - ap.largura / 2, x1 = xCentro + ap.largura / 2, frente = folgas.frente;
-  grupo.add(caixa(x0, x1, yBase + ap.dobradica, yBase + ap.altura, ap.folgaFundo, frente - 3, mat.inox));
+  grupo.add(caixa(x0, x1, yBase + ap.dobradica, yBase + ap.altura, ap.folgaFundo, frente - 3, corpo));
   grupo.add(caixa(x0 + 1, x1 - 1, yBase, yBase + ap.dobradica, ap.folgaFundo + 2, frente - 5, mat.escuro, false));
   grupo.add(caixa(x0, x1, yBase + ap.dobradica + folgas.comp, yBase + ap.altura, frente - 3, frente, mat.escuro));
   grupo.add(caixa(x0 + 4, x0 + 16, yBase + ap.altura - 9, yBase + ap.altura - 5, frente, frente + 0.3, mat.cinzaClaro, false));
   const pivo = new THREE.Group();
   pivo.position.set(S(xCentro), S(yBase + ap.dobradica), S(frente));
   grupo.add(pivo);
-  pivo.add(caixa(-ap.largura / 2, ap.largura / 2, 0, folgas.comp, -3, 0, mat.inoxPorta));
+  pivo.add(caixa(-ap.largura / 2, ap.largura / 2, 0, folgas.comp, -3, 0, folha));
   pivo.add(caixa(-ap.largura / 2 + 8, ap.largura / 2 - 8, folgas.comp - 7, folgas.comp - 4, 0, 1.6, mat.metal));
+  return pivo;
+}
+
+// Midea Touch Plus com as faixas da foto de frente: rodapé, porta e painel.
+function lavaLoucasMidea(grupo, ap, xCentro, yBase, folgas) {
+  const x0 = xCentro - ap.largura / 2, x1 = xCentro + ap.largura / 2, frente = folgas.frente, lado = mat.cinzaMidea;
+  const yPorta = yBase + ap.dobradica, yPainel = yPorta + folgas.comp;
+  grupo.add(caixa(x0, x1, yBase, yPorta, ap.folgaFundo, frente, comFoto('midea', RECORTE_MIDEA.rodape, 1, lado)));
+  grupo.add(caixa(x0, x1, yPorta, yPainel, ap.folgaFundo, frente - 3, lado));
+  grupo.add(caixa(x0, x1, yPainel, yBase + ap.altura, ap.folgaFundo, frente, comFoto('midea', 0, RECORTE_MIDEA.painel, lado)));
+  const pivo = new THREE.Group();
+  pivo.position.set(S(xCentro), S(yPorta), S(frente));
+  grupo.add(pivo);
+  pivo.add(caixa(-ap.largura / 2, ap.largura / 2, 0, folgas.comp, -3, 0, comFoto('midea', RECORTE_MIDEA.painel, RECORTE_MIDEA.rodape, mat.cinzaMideaPorta)));
   return pivo;
 }
 
@@ -521,7 +655,11 @@ function lavaLoucas(grupo, ap, xCentro, yBase, folgas) {
 let M, F, L, W, H, B, P;
 let conteudo = null, paredes = [];
 let gReforma, gHoje, gPiso, gBancadaLL, aereos, pessoa, pivoLS, pivoLL, pivoLB;
-let cenario = 'reforma', variante = 'piso', progressoPortas = 0, alvoPortas = 0, mostrarNomes = true;
+let aba = 'simulacao', cenario = 'reforma', variante = 'piso', progressoPortas = 0, alvoPortas = 0, mostrarNomes = true;
+// Na aba "Aparelhos escolhidos" a cena mostra sempre a reforma com a lava-louças de bancada.
+const escolhidos = () => aba === 'escolhidos';
+const cenarioAtivo = () => escolhidos() ? 'reforma' : cenario;
+const varianteAtiva = () => escolhidos() ? 'bancada' : variante;
 let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
 
 function grupoParede(ponto, normal) {
@@ -663,25 +801,35 @@ function construir() {
   // Lava e seca (porta redonda com dobradiça à esquerda de quem olha)
   const LS = M.reforma.lavaSeca;
   const lsx0 = (xLS0 + xLS1) / 2 - LS.largura / 2, lsx1 = lsx0 + LS.largura;
-  gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.ls.frente, mat.branco));
-  gReforma.add(caixa(lsx0 + 3, lsx0 + 20, LS.altura - 11, LS.altura - 3, F.ls.frente, F.ls.frente + 0.6, mat.cinzaClaro));
-  gReforma.add(caixa(lsx0 + 28, lsx1 - 4, LS.altura - 10, LS.altura - 4, F.ls.frente, F.ls.frente + 0.4, mat.escuro));
+  if (escolhidos()) {
+    gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.ls.frente, comFoto('samsung', 0, 1, mat.inoxLook)));
+  } else {
+    gReforma.add(caixa(lsx0, lsx1, 0.5, LS.altura, LS.folgaFundo, F.ls.frente, mat.branco));
+    gReforma.add(caixa(lsx0 + 3, lsx0 + 20, LS.altura - 11, LS.altura - 3, F.ls.frente, F.ls.frente + 0.6, mat.cinzaClaro));
+    gReforma.add(caixa(lsx0 + 28, lsx1 - 4, LS.altura - 10, LS.altura - 4, F.ls.frente, F.ls.frente + 0.4, mat.escuro));
+  }
   const rPorta = Math.min(F.ls.comp / 2, LS.largura / 2 - 3);
   pivoLS = new THREE.Group();
   pivoLS.position.set(S((lsx0 + lsx1) / 2 + rPorta), S(LS.centroPorta), S(F.ls.frente));
   gReforma.add(pivoLS);
-  const aro = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta), S(rPorta), S(5), 48), mat.escuro);
+  // Cilindro deitado: a tampa de cima vira a frente da porta e a de baixo, o verso.
+  const comFotoPorta = escolhidos() && fotos.samsung;
+  const aro = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta), S(rPorta), S(5), 48),
+    comFotoPorta ? [mat.escuro, materialPortaSamsung(), mat.portaSamsungVerso] : mat.escuro);
   aro.rotation.x = Math.PI / 2;
   aro.position.set(S(-rPorta), 0, S(2.5));
   aro.castShadow = true;
-  const visor = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta * 0.68), S(rPorta * 0.68), S(5.4), 40), mat.vidro);
-  visor.rotation.x = Math.PI / 2;
-  visor.position.copy(aro.position);
-  pivoLS.add(aro, visor);
-  rotulo(gReforma, 'Lava e seca · 60 cm', (xLS0 + xLS1) / 2, yTopo + 14, B.profundidade - 6);
+  pivoLS.add(aro);
+  if (!comFotoPorta) {
+    const visor = new THREE.Mesh(new THREE.CylinderGeometry(S(rPorta * 0.68), S(rPorta * 0.68), S(5.4), 40), mat.vidro);
+    visor.rotation.x = Math.PI / 2;
+    visor.position.copy(aro.position);
+    pivoLS.add(visor);
+  }
+  rotulo(gReforma, escolhidos() ? 'Samsung WD11M · 60 cm' : 'Lava e seca · 60 cm', (xLS0 + xLS1) / 2, yTopo + 14, B.profundidade - 6);
 
-  const cenarioPiso = () => cenario === 'reforma' && variante === 'piso';
-  const cenarioBancada = () => cenario === 'reforma' && variante === 'bancada';
+  const cenarioPiso = () => cenarioAtivo() === 'reforma' && varianteAtiva() === 'piso';
+  const cenarioBancada = () => cenarioAtivo() === 'reforma' && varianteAtiva() === 'bancada';
   const abertas = () => progressoPortas > 0.95;
   rotulo(gReforma, F.ls.sobra >= 0 ? `sobram ≈ ${fmt(F.ls.sobra)} cm` : 'encosta na parede',
     (lsx0 + lsx1) / 2 - 14, 30, Math.min(W - 4, F.ls.ponta + 2), situacao(F.ls.sobra), abertas);
@@ -704,8 +852,10 @@ function construir() {
   gBancadaLL.add(caixa(xLL0 + 1.5, xLL1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
   gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
   gBancadaLL.add(caixa(xLL1 - 6.6, xLL1 - 5.4, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
-  pivoLB = lavaLoucas(gBancadaLL, LB, meioLL, yTopo, F.lb);
-  rotulo(gBancadaLL, 'Lava-louças de bancada · 55 cm', meioLL, yTopo + LB.altura + 12, LB.folgaFundo + LB.profundidade / 2);
+  pivoLB = escolhidos()
+    ? lavaLoucasMidea(gBancadaLL, LB, meioLL, yTopo, F.lb)
+    : lavaLoucas(gBancadaLL, LB, meioLL, yTopo, F.lb);
+  rotulo(gBancadaLL, escolhidos() ? 'Midea Touch Plus · 55 cm' : 'Lava-louças de bancada · 55 cm', meioLL, yTopo + LB.altura + 12, LB.folgaFundo + LB.profundidade / 2);
   rotulo(gBancadaLL, 'Armário · 50 cm', meioLL, 45, B.profundidade);
   rotulo(gBancadaLL, F.lb.sobra >= 0 ? `sobram ≈ ${fmt(F.lb.sobra)} cm` : 'encosta na parede',
     meioLL, yTopo + 14, Math.min(W - 4, F.lb.ponta + 2), situacao(F.lb.sobra), () => cenarioBancada() && abertas());
@@ -757,10 +907,10 @@ function construir() {
 
 // Visibilidade e posição das portas conforme o cenário e a vista escolhidos.
 function aplicarEstado() {
-  gReforma.visible = cenario === 'reforma';
-  gHoje.visible = cenario === 'hoje';
-  gPiso.visible = variante === 'piso';
-  gBancadaLL.visible = variante === 'bancada';
+  gReforma.visible = cenarioAtivo() === 'reforma';
+  gHoje.visible = cenarioAtivo() === 'hoje';
+  gPiso.visible = varianteAtiva() === 'piso';
+  gBancadaLL.visible = varianteAtiva() === 'bancada';
   pessoa.visible = vistaAtual !== 'frente' && vistaAtual !== 'janela'; // nessas vistas a pessoa taparia a bancada
   aereos.visible = vistaAtual !== 'cima';
   aplicarPortas(suave(progressoPortas));
@@ -836,10 +986,26 @@ function definirCenario(nome) {
   document.getElementById('cenario-hoje').setAttribute('aria-pressed', String(nome === 'hoje'));
   document.getElementById('cenario-reforma').setAttribute('aria-pressed', String(nome === 'reforma'));
   document.getElementById('linha-variante').hidden = nome !== 'reforma';
-  botaoPortas.disabled = nome !== 'reforma';
-  if (nome !== 'reforma') definirPortas(false);
+  atualizarBotaoPortas();
   aplicarEstado();
   atualizarPainel();
+}
+function atualizarBotaoPortas() {
+  botaoPortas.disabled = cenarioAtivo() !== 'reforma';
+  if (botaoPortas.disabled) definirPortas(false);
+}
+function definirAba(nome) {
+  aba = nome;
+  for (const id of ['simulacao', 'escolhidos']) {
+    const ativa = id === nome, botao = document.getElementById(`aba-${id}`);
+    botao.setAttribute('aria-selected', String(ativa));
+    botao.tabIndex = ativa ? 0 : -1;
+    document.getElementById(`conteudo-${id}`).hidden = !ativa;
+  }
+  atualizarBotaoPortas();
+  construir();
+  atualizarPainel();
+  if (nome === 'escolhidos') irPara('frente');
 }
 function definirVariante(nome) {
   variante = nome;
@@ -871,6 +1037,7 @@ function atualizarPainel() {
   document.getElementById('subtitulo').textContent = `Simulação aproximada · ${metros(B.comprimento)} m × ${metros(W)} m`;
   const ul = document.getElementById('resultados');
   ul.replaceChildren();
+  atualizarCartoes();
   if (cenario === 'hoje') {
     ul.append(itemResultado('Corredor hoje', `≈ ${fmt(F.corredorHoje)} cm`, 'ok', 'passa 1 pessoa',
       'Da frente da máquina atual até a parede da porta.'));
@@ -895,10 +1062,49 @@ function atualizarPainel() {
       `A porta abre na altura da bancada. A máquina ocupa ${fmt(M.reforma.lavaLoucasBancada.largura)} cm da pedra e o nicho de baixo vira armário.`));
   }
 }
+// Fichas dos aparelhos escolhidos, com as contas da montagem atual.
+function cartao({ nome, modelo, loja, foto, alt }, linhas) {
+  const art = document.createElement('article'); art.className = 'cartao';
+  const img = document.createElement('img'); img.src = foto; img.alt = alt; img.loading = 'lazy';
+  const texto = document.createElement('div'); texto.className = 'texto';
+  const h = document.createElement('h2'); h.textContent = nome;
+  const m = document.createElement('p'); m.className = 'modelo'; m.textContent = modelo;
+  const dl = document.createElement('dl');
+  for (const [rotuloLinha, valor, classe, selo] of linhas) {
+    const dt = document.createElement('dt'); dt.textContent = rotuloLinha;
+    const dd = document.createElement('dd'); dd.textContent = valor;
+    if (classe) { const c = document.createElement('span'); c.className = 'chip ' + classe; c.textContent = selo || textosChip[classe]; dd.append(c); }
+    dl.append(dt, dd);
+  }
+  const a = document.createElement('a'); a.href = loja; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Ver na loja';
+  texto.append(h, m, dl, a);
+  art.append(img, texto);
+  return art;
+}
+const cm = n => `${String(Math.round(n * 10) / 10).replace('.', ',')} cm`;
+function atualizarCartoes() {
+  const ls = M.reforma.lavaSeca, lb = M.reforma.lavaLoucasBancada;
+  const sobraLadoLS = (M.reforma.nichoLavaSeca - ls.largura) / 2, sobraCimaLS = B.alturaLivre - ls.altura;
+  const ateArmario = M.armariosAereos.base - (B.alturaLivre + B.espessura) - lb.altura;
+  document.getElementById('cartoes').replaceChildren(
+    cartao(ESCOLHIDOS.lavaSeca, [
+      ['Tamanho', `${fmt(ls.largura)} × ${fmt(ls.altura)} × ${fmt(ls.profundidade)} cm (L × A × P)`],
+      ['No nicho', `sobra ${cm(sobraLadoLS)} de cada lado e ${cm(sobraCimaLS)} até a pedra`, ...(Math.min(sobraLadoLS, sobraCimaLS) >= 2 ? ['ok', 'cabe'] : ['limite', 'não cabe'])],
+      ['Porta aberta', textoSobra(F.ls.sobra) + ' até a parede da frente', situacao(F.ls.sobra)],
+    ]),
+    cartao(ESCOLHIDOS.lavaLoucas, [
+      ['Tamanho', `${fmt(lb.largura)} × ${cm(lb.altura).replace(' cm', '')} × ${fmt(lb.profundidade)} cm (L × A × P)`],
+      ['Em cima da pedra', `ficam ${cm(ateArmario)} até os armários de cima`, ...(ateArmario >= 10 ? ['ok', 'cabe'] : ateArmario >= 0 ? ['justo', 'justo'] : ['limite', 'não cabe'])],
+      ['Porta aberta', textoSobra(F.lb.sobra) + ' até a parede da frente (porta medida pela foto)', situacao(F.lb.sobra)],
+      ['Embaixo', 'o nicho de 50 cm vira armário'],
+    ]),
+  );
+}
+
 document.getElementById('nota-medidas').textContent =
   'Medidas aproximadas, para ter noção do espaço. Aparelhos com medidas de catálogo: lava e seca Samsung WD11M (60 × 85 × 65 cm), ' +
-  'lava-louças de piso de 10 serviços (45 × 85 × 60 cm) e lava-louças de bancada de 8 serviços (55 × 60 × 50 cm). ' +
-  'A lava-louças de piso aberta usa a média dos fabricantes (115 a 120 cm); a de bancada é estimada. Confira no manual do modelo escolhido.';
+  'lava-louças de piso de 10 serviços (45 × 85 × 60 cm) e lava-louças de bancada Midea Touch Plus (55 × 59,5 × 50 cm). ' +
+  'A lava-louças de piso aberta usa a média dos fabricantes (115 a 120 cm); a porta da Midea foi medida pela proporção da foto. Confira no manual do modelo escolhido.';
 
 // ---------- E se…? (ajuste de medidas) ----------
 const campos = document.getElementById('campos');
@@ -948,6 +1154,14 @@ function agendarMontagem() {
 }
 
 // ---------- Botões ----------
+document.getElementById('aba-simulacao').addEventListener('click', () => definirAba('simulacao'));
+document.getElementById('aba-escolhidos').addEventListener('click', () => definirAba('escolhidos'));
+document.querySelector('.abas').addEventListener('keydown', evento => {
+  if (evento.key !== 'ArrowLeft' && evento.key !== 'ArrowRight') return;
+  const proxima = aba === 'simulacao' ? 'escolhidos' : 'simulacao';
+  definirAba(proxima);
+  document.getElementById(`aba-${proxima}`).focus();
+});
 document.getElementById('cenario-hoje').addEventListener('click', () => definirCenario('hoje'));
 document.getElementById('cenario-reforma').addEventListener('click', () => definirCenario('reforma'));
 document.getElementById('variante-piso').addEventListener('click', () => definirVariante('piso'));

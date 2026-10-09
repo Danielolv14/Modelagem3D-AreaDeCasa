@@ -58,6 +58,19 @@ Fica em cima da pedra, ao lado da cuba, e o nicho de 50 cm embaixo vira armário
 - Contras: ocupa ~55 cm da bancada e lava menos louça por vez (8 em vez de 10 serviços).
 - Fonte: [Casa dos Eletrodomésticos](https://www.casadoseletrodomesticos.com.br/melhor-lava-loucas-de-bancada)
 
+## Aparelhos escolhidos (2026-10-09)
+
+| Aparelho | Modelo | L × A × P | No lugar |
+|---|---|---|---|
+| Lava e seca Samsung WD11M, Inox Look, 11/7 kg | WD11M4473PX | 60 × 85 × 65 cm | Nicho de 65 cm: sobram 2,5 cm de cada lado e 2,5 cm até a pedra. Porta aberta: sobram ≈ 7 cm até a parede. |
+| Lava-louças Midea Touch Plus, cinza, 8 serviços, de bancada | MDWTF08S | 55 × 59,5 × 50 cm (21,1 kg) | Em cima da pedra: ficam 28 cm até os armários de cima. Porta aberta: sobram ≈ 24 cm até a parede. |
+
+- A Midea não é bivolt: escolher 127 V ou 220 V igual à tomada.
+- Porta da Midea medida pela proporção da foto de frente: rodapé 10,3 cm, porta 41,5 cm, painel 7,7 cm.
+- Na página, a aba **Aparelhos escolhidos** mostra os dois com as fotos reais coladas na frente do modelo 3D.
+- As texturas saíram das fotos que o usuário mandou: a frente da Samsung veio da foto com a porta aberta. A porta da foto foi apagada e o fundo reconstruído; a porta fechada é desenhada com o tambor recortado da própria foto.
+- Fontes: [Fast Shop, MDWTF08S](https://site.fastshop.com.br/lava-loucas-midea-touch-plus-cinza-com-08-servicos-e-05-programas-de-lavagem---mdwtf08s-1qmdwtf08s_prd/p), [Casa dos Eletrodomésticos, WD11M4473PX](https://www.casadoseletrodomesticos.com.br/melhor-lava-e-seca-11kg), [Samsung, WD11M4473PX](https://www.samsung.com/br/washers-and-dryers/washer-dryer-combo/wd4000t-front-loading-air-wash-drum-clean-bubble-soak-11kg-gray-wd11m4473px-az)
+
 ## Resultado da simulação (versão 1)
 - Corredor com tudo fechado: ≈ 50 cm.
 - Lava e seca aberta: sobram ≈ 7 cm até a parede da porta.

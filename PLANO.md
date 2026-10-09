@@ -161,6 +161,7 @@ O repositório `Danielolv14/Modelagem3D-AreaDeCasa` é **público**. Por isso:
 - [x] Painel "E se…?" para ajustar medidas na página
 - [x] Plano B: lava-louças de bancada de 8 serviços
 - [x] Link público: https://area-de-servico-3d.vercel.app
+- [x] Aba "Aparelhos escolhidos": Samsung WD11M4473PX + Midea Touch Plus MDWTF08S com as fotos reais
 - [ ] Confirmar onde fica a passagem da cozinha e a largura dela (hoje estimada em 80 cm)
-- [ ] Trocar a lava-louças genérica pelo modelo escolhido (medida real da porta aberta)
+- [ ] Confirmar no manual da Midea a profundidade com a porta aberta (hoje medida pela foto)
 - [ ] Decidir onde vão o forno, a sapateira e a lixeira

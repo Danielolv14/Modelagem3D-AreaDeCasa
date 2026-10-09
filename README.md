@@ -5,7 +5,8 @@ os novos equipamentos cabem no espaço.
 
 ## Como abrir
 - Link público: **https://area-de-servico-3d.vercel.app**
-- Ou abrir o `index.html` no navegador (precisa de internet para carregar o Three.js).
+- Ou servir a pasta por HTTP (`python3 -m http.server`) e abrir `index.html`. Aberto direto do disco, as fotos dos aparelhos não carregam.
+- Aba **Aparelhos escolhidos**: a Samsung WD11M4473PX e a Midea Touch Plus MDWTF08S no lugar, com as fotos reais.
 
 ## Como corrigir uma medida
 - **Pela página:** o painel "E se…?" muda corredor, fundo da bancada, largura da passagem e a
