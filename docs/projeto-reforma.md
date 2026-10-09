@@ -71,6 +71,13 @@ Fica em cima da pedra, ao lado da cuba, e o nicho de 50 cm embaixo vira armário
 - As texturas saíram das fotos que o usuário mandou: a frente da Samsung veio da foto com a porta aberta. A porta da foto foi apagada e o fundo reconstruído; a porta fechada é desenhada com o tambor recortado da própria foto.
 - Fontes: [Fast Shop, MDWTF08S](https://site.fastshop.com.br/lava-loucas-midea-touch-plus-cinza-com-08-servicos-e-05-programas-de-lavagem---mdwtf08s-1qmdwtf08s_prd/p), [Casa dos Eletrodomésticos, WD11M4473PX](https://www.casadoseletrodomesticos.com.br/melhor-lava-e-seca-11kg), [Samsung, WD11M4473PX](https://www.samsung.com/br/washers-and-dryers/washer-dryer-combo/wd4000t-front-loading-air-wash-drum-clean-bubble-soak-11kg-gray-wd11m4473px-az)
 
+### Opção: Midea embaixo da pedra, ao lado da lava e seca
+- **Cabe**, desde que o nicho da lava-louças passe de 50 para **57 cm** (55 cm do aparelho + 1 cm de cada lado). O armário da cuba encolhe de 85 para **78 cm**, e a cuba de 30 cm continua cabendo.
+- Altura: 59,5 cm num vão de 87,5 cm, então **sobram 28 cm até a pedra**. Uma base de até ~25 cm levantaria a porta e faria menos abaixar.
+- Porta aberta: igual à opção em cima, **sobram ≈ 24 cm** até a parede da frente (com a máquina a 5 cm da parede de trás). Se a frente ficar alinhada com os armários, sobram ≈ 10 cm.
+- Vantagem: a bancada de pedra fica toda livre. Contra: precisa abaixar para carregar, se não tiver base.
+- A foto de divulgação da Midea mostra o aparelho num nicho embaixo de uma bancada, mas vale conferir no manual a folga de ventilação nas laterais e em cima.
+
 ## Resultado da simulação (versão 1)
 - Corredor com tudo fechado: ≈ 50 cm.
 - Lava e seca aberta: sobram ≈ 7 cm até a parede da porta.

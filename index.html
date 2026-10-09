@@ -222,7 +222,14 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
     </div>
 
     <div class="conteudo-aba" id="conteudo-escolhidos" role="tabpanel" aria-labelledby="aba-escolhidos" hidden>
-      <p class="nota">Os dois aparelhos escolhidos, com as medidas do fabricante, no lugar planejado: a lava e seca embaixo da pedra e a lava-louças em cima dela, ao lado da cuba.</p>
+      <div class="linha">
+        <span class="rotulo-linha">Lava-louças</span>
+        <div class="segmentado pequeno" role="group" aria-label="Onde fica a lava-louças">
+          <button type="button" id="posicao-cima" aria-pressed="true">Em cima da pedra</button>
+          <button type="button" id="posicao-baixo" aria-pressed="false">Ao lado da lava e seca</button>
+        </div>
+      </div>
+      <p class="nota" id="nota-escolhidos"></p>
       <div class="cartoes" id="cartoes"></div>
     </div>
 
@@ -288,7 +295,9 @@ const AJUSTES = [
   { id: 'portaLS', nome: 'Lava e seca com a porta aberta', min: 90, max: 125, ajuda: 'Do fundo da máquina até a ponta da porta aberta a 90°.' },
 ];
 
-function montarMedidas(a) {
+// llEmbaixo: a lava-louças de bancada vai para baixo da pedra, ao lado da lava e seca.
+// O nicho dela cresce para 57 cm (55 + 1 cm de cada lado) e o armário da cuba encolhe na mesma medida.
+function montarMedidas(a, { llEmbaixo = false } = {}) {
   const P = a.passagem, W = a.corredor, L = P + 200;
   return {
     comodo: { comprimento: L, largura: W, peDireito: 250 },             // comprimento: passagem + 2,00 m de bancada
@@ -305,7 +314,7 @@ function montarMedidas(a) {
     reforma: {
       bancada: { inicio: P, comprimento: 200, profundidade: a.fundo, alturaLivre: 87.5, espessura: 3, rodabanca: 10 },
       // Da passagem da cozinha para a janela:
-      nichoLavaSeca: 65, nichoLavaLoucas: 50, armarioCuba: 85,
+      nichoLavaSeca: 65, nichoLavaLoucas: llEmbaixo ? 57 : 50, armarioCuba: llEmbaixo ? 78 : 85,
       lavaSeca: { largura: 60, altura: 85, profundidade: 65, portaAberta: a.portaLS, centroPorta: 45, folgaFundo: 3 }, // centro da porta medido na foto de frente
       lavaLoucas: { largura: 44.8, altura: 84.5, profundidade: 60, portaAberta: a.portaLL, dobradica: 10, folgaFundo: 3 },
       // Plano B: lava-louças de bancada de 8 serviços, medidas da Midea Touch Plus MDWTF08S.
@@ -660,6 +669,8 @@ let aba = 'simulacao', cenario = 'reforma', variante = 'piso', progressoPortas =
 const escolhidos = () => aba === 'escolhidos';
 const cenarioAtivo = () => escolhidos() ? 'reforma' : cenario;
 const varianteAtiva = () => escolhidos() ? 'bancada' : variante;
+let posicaoLL = 'cima';
+const llEmbaixo = () => escolhidos() && posicaoLL === 'baixo';
 let vistaAtual = 'geral', usuarioMexeu = false, transicao = null;
 
 function grupoParede(ponto, normal) {
@@ -680,7 +691,7 @@ function descartar() {
 
 function construir() {
   descartar();
-  M = montarMedidas(ajustes);
+  M = montarMedidas(ajustes, { llEmbaixo: llEmbaixo() });
   F = calcularFolgas(M);
   L = M.comodo.comprimento; W = M.comodo.largura; H = M.comodo.peDireito;
   B = M.reforma.bancada; P = M.passagemCozinha;
@@ -796,7 +807,7 @@ function construir() {
   tubo.castShadow = true;
   gReforma.add(tubo);
   gReforma.add(caixa(meioAC - 1.1, meioAC + 1.1, yTopo + 25, yTopo + 28, 6, 24, mat.metal));
-  rotulo(gReforma, 'Armário com cuba · 85 cm', meioAC, yTopo + 14, B.profundidade - 6);
+  rotulo(gReforma, `Armário com cuba · ${fmt(M.reforma.armarioCuba)} cm`, meioAC, yTopo + 14, B.profundidade - 6);
 
   // Lava e seca (porta redonda com dobradiça à esquerda de quem olha)
   const LS = M.reforma.lavaSeca;
@@ -848,17 +859,20 @@ function construir() {
   gBancadaLL = new THREE.Group();
   gReforma.add(gBancadaLL);
   const LB = M.reforma.lavaLoucasBancada, meioLL = (xLL0 + xLL1) / 2;
-  gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
-  gBancadaLL.add(caixa(xLL0 + 1.5, xLL1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
-  gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
-  gBancadaLL.add(caixa(xLL1 - 6.6, xLL1 - 5.4, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+  const embaixo = llEmbaixo(), yLL = embaixo ? 0 : yTopo;
+  if (!embaixo) {
+    gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10, yPedra, 2, B.profundidade - 4, mat.armario));
+    gBancadaLL.add(caixa(xLL0 + 1.5, xLL1 - 1.5, 0, 10, 4, B.profundidade - 9, mat.escuro, false));
+    gBancadaLL.add(caixa(xLL0 + 0.5, xLL1 - 0.5, 10.5, yPedra - 0.5, B.profundidade - 4, B.profundidade - 2, mat.armarioPorta));
+    gBancadaLL.add(caixa(xLL1 - 6.6, xLL1 - 5.4, 64, 80, B.profundidade - 2, B.profundidade - 0.4, mat.metal));
+    rotulo(gBancadaLL, `Armário · ${fmt(M.reforma.nichoLavaLoucas)} cm`, meioLL, 45, B.profundidade);
+  }
   pivoLB = escolhidos()
-    ? lavaLoucasMidea(gBancadaLL, LB, meioLL, yTopo, F.lb)
-    : lavaLoucas(gBancadaLL, LB, meioLL, yTopo, F.lb);
-  rotulo(gBancadaLL, escolhidos() ? 'Midea Touch Plus · 55 cm' : 'Lava-louças de bancada · 55 cm', meioLL, yTopo + LB.altura + 12, LB.folgaFundo + LB.profundidade / 2);
-  rotulo(gBancadaLL, 'Armário · 50 cm', meioLL, 45, B.profundidade);
+    ? lavaLoucasMidea(gBancadaLL, LB, meioLL, yLL, F.lb)
+    : lavaLoucas(gBancadaLL, LB, meioLL, yLL, F.lb);
+  rotulo(gBancadaLL, escolhidos() ? 'Midea Touch Plus · 55 cm' : 'Lava-louças de bancada · 55 cm', meioLL, yLL + LB.altura + 12, LB.folgaFundo + LB.profundidade / 2);
   rotulo(gBancadaLL, F.lb.sobra >= 0 ? `sobram ≈ ${fmt(F.lb.sobra)} cm` : 'encosta na parede',
-    meioLL, yTopo + 14, Math.min(W - 4, F.lb.ponta + 2), situacao(F.lb.sobra), () => cenarioBancada() && abertas());
+    meioLL, yLL + 14, Math.min(W - 4, F.lb.ponta + 2), situacao(F.lb.sobra), () => cenarioBancada() && abertas());
   cotaChao(gBancadaLL, xAC0 + 10, W - F.corredorBancada, W, `≈ ${fmt(F.corredorBancada)} cm livres`);
 
   // ---------- Cenário: hoje ----------
@@ -1007,6 +1021,13 @@ function definirAba(nome) {
   atualizarPainel();
   if (nome === 'escolhidos') irPara('frente');
 }
+function definirPosicao(nome) {
+  posicaoLL = nome;
+  document.getElementById('posicao-cima').setAttribute('aria-pressed', String(nome === 'cima'));
+  document.getElementById('posicao-baixo').setAttribute('aria-pressed', String(nome === 'baixo'));
+  construir();
+  atualizarPainel();
+}
 function definirVariante(nome) {
   variante = nome;
   document.getElementById('variante-piso').setAttribute('aria-pressed', String(nome === 'piso'));
@@ -1086,6 +1107,7 @@ function atualizarCartoes() {
   const ls = M.reforma.lavaSeca, lb = M.reforma.lavaLoucasBancada;
   const sobraLadoLS = (M.reforma.nichoLavaSeca - ls.largura) / 2, sobraCimaLS = B.alturaLivre - ls.altura;
   const ateArmario = M.armariosAereos.base - (B.alturaLivre + B.espessura) - lb.altura;
+  const sobraLadoLL = (M.reforma.nichoLavaLoucas - lb.largura) / 2, sobraCimaLL = B.alturaLivre - lb.altura;
   document.getElementById('cartoes').replaceChildren(
     cartao(ESCOLHIDOS.lavaSeca, [
       ['Tamanho', `${fmt(ls.largura)} × ${fmt(ls.altura)} × ${fmt(ls.profundidade)} cm (L × A × P)`],
@@ -1094,11 +1116,21 @@ function atualizarCartoes() {
     ]),
     cartao(ESCOLHIDOS.lavaLoucas, [
       ['Tamanho', `${fmt(lb.largura)} × ${cm(lb.altura).replace(' cm', '')} × ${fmt(lb.profundidade)} cm (L × A × P)`],
-      ['Em cima da pedra', `ficam ${cm(ateArmario)} até os armários de cima`, ...(ateArmario >= 10 ? ['ok', 'cabe'] : ateArmario >= 0 ? ['justo', 'justo'] : ['limite', 'não cabe'])],
-      ['Porta aberta', textoSobra(F.lb.sobra) + ' até a parede da frente (porta medida pela foto)', situacao(F.lb.sobra)],
-      ['Embaixo', 'o nicho de 50 cm vira armário'],
+      ...(posicaoLL === 'baixo' ? [
+        ['Embaixo da pedra', `nicho de ${fmt(M.reforma.nichoLavaLoucas)} cm: sobra ${cm(sobraLadoLL)} de cada lado e ${cm(sobraCimaLL)} até a pedra`, ...(sobraLadoLL >= 1 && sobraCimaLL >= 0 ? ['ok', 'cabe'] : ['limite', 'não cabe'])],
+        ['Porta aberta', textoSobra(F.lb.sobra) + ' até a parede da frente (porta medida pela foto)', situacao(F.lb.sobra)],
+        ['Armário da cuba', `diminui de 85 para ${fmt(M.reforma.armarioCuba)} cm`],
+        ['Em cima da pedra', 'a bancada fica toda livre'],
+      ] : [
+        ['Em cima da pedra', `ficam ${cm(ateArmario)} até os armários de cima`, ...(ateArmario >= 10 ? ['ok', 'cabe'] : ateArmario >= 0 ? ['justo', 'justo'] : ['limite', 'não cabe'])],
+        ['Porta aberta', textoSobra(F.lb.sobra) + ' até a parede da frente (porta medida pela foto)', situacao(F.lb.sobra)],
+        ['Embaixo', `o nicho de ${fmt(M.reforma.nichoLavaLoucas)} cm vira armário`],
+      ]),
     ]),
   );
+  document.getElementById('nota-escolhidos').textContent = posicaoLL === 'baixo'
+    ? 'A lava e seca e a lava-louças lado a lado, embaixo da pedra. Para a lava-louças de 55 cm caber, o nicho dela passa de 50 para 57 cm e o armário da cuba encolhe de 85 para 78 cm.'
+    : 'A lava e seca embaixo da pedra e a lava-louças em cima dela, ao lado da cuba. Medidas do fabricante.';
 }
 
 document.getElementById('nota-medidas').textContent =
@@ -1154,6 +1186,8 @@ function agendarMontagem() {
 }
 
 // ---------- Botões ----------
+document.getElementById('posicao-cima').addEventListener('click', () => definirPosicao('cima'));
+document.getElementById('posicao-baixo').addEventListener('click', () => definirPosicao('baixo'));
 document.getElementById('aba-simulacao').addEventListener('click', () => definirAba('simulacao'));
 document.getElementById('aba-escolhidos').addEventListener('click', () => definirAba('escolhidos'));
 document.querySelector('.abas').addEventListener('keydown', evento => {
